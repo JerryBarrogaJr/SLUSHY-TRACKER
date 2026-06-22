@@ -36,7 +36,6 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 @keyframes shine { to { background-position: 200% center; } }
 @keyframes loadProgress { 0% { width: 0%; } 100% { width: 100%; } }
 
-/* GLOBAL NETWORK LOADER BAR FOR SUPABASE SIMULATION */
 #globalNetworkBar { width: 0%; height: 3px; background: linear-gradient(90deg, var(--secondary), var(--accent)); position: fixed; top: 0; left: 0; z-index: 10000; transition: width 0.2s ease, opacity 0.4s ease; opacity: 0; }
 
 .main-viewport { flex: 1; padding: 20px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
@@ -81,13 +80,15 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 #teamTotal { color: var(--secondary); }
 #overall { color: var(--accent); }
 
-.filterBox{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; width: 100%; background: var(--bg-card); padding: 15px; border-radius: 14px; border: 1px solid var(--border); }
+/* ALIGNED TO THE LEFT FILTERS GRAPHIC */
+.filterBox { background: var(--bg-card); padding: 15px; border-radius: 14px; border: 1px solid var(--border); width: 100%; }
+.filter-controls-group { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; justify-content: flex-start; }
 .control-group { display: flex; flex-direction: column; gap: 6px; }
 .control-group label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
 select, input{ padding:10px 16px; background: var(--bg-input); color: var(--text-main); border-radius:10px; border:1px solid var(--border); font-family:inherit; outline:none; font-size: 13px; transition: all 0.2s; height: 40px; }
 select:focus, input:focus { border-color: var(--secondary); }
 
-.custom-range-picker { display: none; gap: 10px; flex-wrap: wrap; align-items: flex-end; border-left: 2px solid var(--border); padding-left: 15px; }
+.custom-range-picker { display: none; gap: 12px; align-items: flex-end; border-left: 2px solid var(--border); border-right: 2px solid var(--border); padding: 0 16px; }
 
 .table-container { width: 100%; background: var(--bg-card); border-radius:14px; overflow:hidden; border: 1px solid var(--border); }
 table{ width:100%; border-collapse:collapse; }
@@ -176,42 +177,42 @@ details[open] .arrow{ transform:rotate(90deg) }
   </div>
 
   <div class="filterBox">
-    <div class="control-group">
-      <label>Timeframe Preset</label>
-      <select id="filterType" onchange="handleFilterTypeChange()">
-        <option value="all">All Time</option>
-        <option value="today">Today</option>
-        <option value="yesterday">Yesterday</option>
-        <option value="month">This Month</option>
-        <option value="range">Custom Date/Time Range</option>
-      </select>
-    </div>
+    <div class="filter-controls-group">
+      <div class="control-group">
+        <label>Timeframe Preset</label>
+        <select id="filterType" onchange="handleFilterTypeChange()">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="month">This Month</option>
+          <option value="range">Custom Range</option>
+        </select>
+      </div>
 
-    <div class="custom-range-picker" id="customRangePicker">
-      <div class="control-group">
-        <label>Start Date</label>
-        <input type="date" id="rangeStartDate">
+      <div class="custom-range-picker" id="customRangePicker">
+        <div class="control-group">
+          <label>Start Date/Time</label>
+          <div style="display: flex; gap: 4px;">
+            <input type="date" id="rangeStartDate" style="width: 130px;">
+            <input type="time" id="rangeStartTime" value="00:00" style="width: 80px;">
+          </div>
+        </div>
+        <div class="control-group">
+          <label>End Date/Time</label>
+          <div style="display: flex; gap: 4px;">
+            <input type="date" id="rangeEndDate" style="width: 130px;">
+            <input type="time" id="rangeEndTime" value="23:59" style="width: 80px;">
+          </div>
+        </div>
+        <button class="btn green" style="height: 40px; padding: 0 12px;" onclick="renderAll()">Apply</button>
       </div>
-      <div class="control-group">
-        <label>Start Time</label>
-        <input type="time" id="rangeStartTime" value="00:00">
-      </div>
-      <div class="control-group">
-        <label>End Date</label>
-        <input type="date" id="rangeEndDate">
-      </div>
-      <div class="control-group">
-        <label>End Time</label>
-        <input type="time" id="rangeEndTime" value="23:59">
-      </div>
-      <button class="btn green" style="height: 40px;" onclick="renderAll()">Apply Range</button>
-    </div>
 
-    <div class="control-group" style="margin-left: auto;">
-      <label>Filter by Member</label>
-      <select id="memberFilter" onchange="setMemberFilter(this.value)">
-        <option value="all">All Members</option>
-      </select>
+      <div class="control-group">
+        <label>Filter by Member</label>
+        <select id="memberFilter" onchange="setMemberFilter(this.value)">
+          <option value="all">All Members</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -340,10 +341,6 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <script>
-/**
- * ⚡ RELATIONAL DATA LAYER ARCHITECTURE WITH SIMULATED LATENCY PROPAGATION
- * Perfectly mimics Supabase network activity for seamless production drops.
- */
 const SEED_DATA = {
   teams: [
     { id: "t1", name: "Team 1" }, { id: "t2", name: "Team 2" },
@@ -353,13 +350,12 @@ const SEED_DATA = {
   sales: []
 };
 
-// Simulated Network Controller & Async Interface
 const db = {
   async _simulateNetwork() {
     const bar = document.getElementById("globalNetworkBar");
     bar.style.opacity = "1";
     bar.style.width = "30%";
-    await new Promise(resolve => setTimeout(resolve, 80 + Math.random() * 150)); // Simulated latency
+    await new Promise(resolve => setTimeout(resolve, 80 + Math.random() * 150));
     bar.style.width = "80%";
     await new Promise(resolve => setTimeout(resolve, 50));
     bar.style.width = "100%";
@@ -429,17 +425,15 @@ const db = {
   }
 };
 
-// Global App States
 const ADMIN_PASSWORD = "admin123"; 
 let isAdmin = false; 
 let currentTeamId = "all";
 let selectedMemberName = "all";
 let chartInstance = null;
-let isMutatingLock = false; // Prevents double click submission collisions
+let isMutatingLock = false;
 
 let activeSaleContext = { teamId: null, memberId: null, saleId: null };
 
-// Global Execution Guard Wrapper (Error Boundary Handling)
 async function runWithGuard(actionFn, successMsg = null) {
   if (isMutatingLock) return;
   setGlobalDisabledStates(true);
@@ -460,7 +454,6 @@ function setGlobalDisabledStates(disabled) {
   buttons.forEach(b => b.disabled = disabled);
 }
 
-// Lifecycle Initializer
 window.addEventListener("DOMContentLoaded", async () => {
   let now = new Date();
   let todayStr = now.toISOString().split('T')[0];
@@ -481,7 +474,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   updateAuthUI();
 });
 
-// UI Notification Layer
 function showNotification(msg, type = "info") {
   const banner = document.getElementById("appNotification");
   document.getElementById("notificationMessage").innerText = msg;
@@ -494,7 +486,6 @@ function openModal(id) { document.getElementById(id).style.display = "flex"; }
 function closeModal(id) { document.getElementById(id).style.display = "none"; }
 function escapeHtml(str) { return !str ? '' : String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-// Authorization Components
 function openAuthModal(showWarning = false) {
   document.getElementById("authWarning").style.display = showWarning ? "block" : "none";
   document.getElementById("authPasscode").value = "";
@@ -555,9 +546,8 @@ function matchTimeframeFilter(timestampStr) {
   return true;
 }
 
-// Global Core Sync & UI Render Implementation
 async function renderAll() {
-  let appData = await db._getRaw(); // Sync directly to avoid multi-spinner layout flickering
+  let appData = await db._getRaw();
   
   let tabHtml = '';
   appData.teams.forEach(t => {
@@ -657,7 +647,6 @@ async function renderAll() {
 
 function switchTeam(id) { currentTeamId = id; selectedMemberName = "all"; renderAll(); }
 
-// Action Submissions points running behind transaction guard systems
 function openAddTeamModal() { if (!isAdmin) { openAuthModal(true); return; } document.getElementById("newTeamInputName").value = ""; openModal("addTeamModal"); }
 async function submitAddTeam() {
   let name = document.getElementById("newTeamInputName").value.trim();
