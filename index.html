@@ -96,6 +96,14 @@ th{ background: rgba(255,255,255,0.01); color: var(--text-muted); font-weight: 5
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: rgba(255,255,255,0.01); }
 
+/* OPTIMIZATION UPGRADE: PAGINATION CONTROL FOOTER */
+.pagination-footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: rgba(255, 255, 255, 0.01); border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+.pagination-info { font-size: 12px; color: var(--text-muted); }
+.pagination-buttons { display: flex; gap: 6px; align-items: center; }
+.btn-pager { padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; }
+.btn-pager:hover:not(:disabled) { border-color: var(--secondary); color: var(--secondary); }
+.btn-pager:disabled { opacity: 0.3; cursor: not-allowed; }
+
 .small{ padding:6px 12px; border:1px solid transparent; border-radius:6px; color:#fff; cursor:pointer; margin:2px; font-weight:500; font-size: 12px; transition: all 0.2s;}
 .small:disabled { opacity: 0.4; cursor: not-allowed; }
 .green{ background: rgba(16, 185, 129, 0.08); color: #34d399; border-color: rgba(16, 185, 129, 0.15); }
@@ -234,6 +242,13 @@ details[open] .arrow{ transform:rotate(90deg) }
       </thead>
       <tbody id="tableBody"></tbody>
     </table>
+    <div class="pagination-footer">
+      <div class="pagination-info" id="paginationInfo">Showing 0-0 of 0 items</div>
+      <div class="pagination-buttons">
+        <button id="btnPrevPage" class="btn-pager" onclick="changePage(-1)">◀ Prev</button>
+        <button id="btnNextPage" class="btn-pager" onclick="changePage(1)">Next ▶</button>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -340,9 +355,6 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <script>
-/**
- * ⚡ RELATIONAL DATA LAYER ARCHITECTURE WITH DATA VALIDATION HOOKS
- */
 const SEED_DATA = {
   teams: [
     { id: "t1", name: "Team 1" }, { id: "t2", name: "Team 2" },
@@ -376,7 +388,6 @@ const db = {
     return await this._getRaw();
   },
   async addTeam(name) {
-    // Backend Emulated Validation Rule
     if (!name || name.trim().length === 0) throw new Error("Validation Error: Team name parameter missing.");
     await this._simulateNetwork();
     let raw = await this._getRaw();
@@ -412,7 +423,6 @@ const db = {
     await this._saveRaw(raw);
   },
   async upsertSale(saleData) {
-    // Backend Emulated Constraints Enforcements
     if (!saleData.fan_name || saleData.fan_name.trim().length === 0) throw new Error("Validation Failure: Fan name identity check failed.");
     if (isNaN(saleData.amount) || saleData.amount <= 0) throw new Error("Validation Failure: Financial entity payload value constraint violated.");
     if (isNaN(Date.parse(saleData.timestamp))) throw new Error("Validation Failure: Target event logging execution timeframe is malformed.");
@@ -446,6 +456,10 @@ let selectedMemberName = "all";
 let chartInstance = null;
 let isMutatingLock = false;
 
+// PERFORMANCE UPGRADE: PAGINATION CONTROL STATES
+let currentPage = 1;
+const rowsPerPage = 5; 
+
 let activeSaleContext = { teamId: null, memberId: null, saleId: null };
 
 async function runWithGuard(actionFn, successMsg = null) {
@@ -464,15 +478,11 @@ async function runWithGuard(actionFn, successMsg = null) {
 
 function setGlobalDisabledStates(disabled) {
   isMutatingLock = disabled;
-  const selectors = '.btn, .small, .btn-icon, select, input, .btn-submit, .close';
+  const selectors = '.btn, .small, .btn-icon, select, input, .btn-submit, .close, .btn-pager';
   const buttons = document.querySelectorAll(selectors);
   buttons.forEach(b => {
     b.disabled = disabled;
-    if (disabled) {
-      b.style.pointerEvents = 'none';
-    } else {
-      b.style.pointerEvents = 'auto';
-    }
+    b.style.pointerEvents = disabled ? 'none' : 'auto';
   });
 }
 
@@ -537,9 +547,9 @@ function updateAuthUI() {
 function handleFilterTypeChange() {
   let type = document.getElementById("filterType").value;
   document.getElementById("customRangePicker").style.display = (type === "range") ? "flex" : "none";
-  if(type !== "range") renderAll();
+  if(type !== "range") { currentPage = 1; renderAll(); }
 }
-function setMemberFilter(v){ selectedMemberName = v; renderAll(); }
+function setMemberFilter(v){ selectedMemberName = v; currentPage = 1; renderAll(); }
 
 function matchTimeframeFilter(timestampStr) {
   let type = document.getElementById("filterType").value;
@@ -566,6 +576,13 @@ function matchTimeframeFilter(timestampStr) {
     return saleDate >= boundaryStart && saleDate <= boundaryEnd;
   }
   return true;
+}
+
+// PERFORMANCE UPGRADE: PAGINATION EVENT HANDLING INTERFACE BUTTONS
+function changePage(direction) {
+  if (isMutatingLock) return;
+  currentPage += direction;
+  renderAll();
 }
 
 async function renderAll() {
@@ -595,6 +612,7 @@ async function renderAll() {
   let now = new Date();
   let leaderboardMap = {};
 
+  // MEMOIZATION UPGRADE: Pre-aggregate calculations via linear iteration
   appData.sales.forEach(s => {
     let sDate = new Date(s.timestamp);
     overallAllTime += s.amount;
@@ -602,15 +620,35 @@ async function renderAll() {
     if (sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear()) monthTotal += s.amount;
   });
 
-  let tbodyHtml = '';
-  relevantMembers.forEach(member => {
-    if (selectedMemberName !== "all" && member.name !== selectedMemberName) return;
+  // Filter members dataset list array down first
+  let displayMembersList = relevantMembers.filter(member => {
+    if (selectedMemberName !== "all" && member.name !== selectedMemberName) return false;
+    return true;
+  });
 
+  // Build metrics for all filtered items first (important for correct totals regardless of pagination page)
+  displayMembersList.forEach(member => {
     let memberSales = appData.sales.filter(s => s.member_id === member.id && matchTimeframeFilter(s.timestamp));
     let memberFilteredSum = memberSales.reduce((acc, curr) => acc + curr.amount, 0);
     teamTotal += memberFilteredSum;
-
     leaderboardMap[member.name] = (leaderboardMap[member.name] || 0) + memberFilteredSum;
+  });
+
+  // PERFORMANCE UPGRADE: Paginate filtered listing rows array subset split
+  let totalItems = displayMembersList.length;
+  let maxPage = Math.ceil(totalItems / rowsPerPage) || 1;
+  if (currentPage > maxPage) currentPage = maxPage;
+  if (currentPage < 1) currentPage = 1;
+
+  let startIndex = (currentPage - 1) * rowsPerPage;
+  let endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+  let paginatedMembers = displayMembersList.slice(startIndex, startIndex + rowsPerPage);
+
+  // Render out the slice subset rows instead of the whole collection loop
+  let tbodyHtml = '';
+  paginatedMembers.forEach(member => {
+    let memberSales = appData.sales.filter(s => s.member_id === member.id && matchTimeframeFilter(s.timestamp));
+    let memberFilteredSum = memberSales.reduce((acc, curr) => acc + curr.amount, 0);
 
     let salesRowsHtml = memberSales.map(s => {
       let dObj = new Date(s.timestamp);
@@ -658,6 +696,13 @@ async function renderAll() {
   document.getElementById('daily').innerText = '$' + todayTotal.toFixed(2);
   document.getElementById('monthly').innerText = '$' + monthTotal.toFixed(2);
 
+  // Update footer UI strings values
+  document.getElementById('paginationInfo').innerText = totalItems > 0 
+    ? `Showing ${startIndex + 1}-${endIndex} of ${totalItems} members`
+    : `Showing 0-0 of 0 members`;
+  document.getElementById('btnPrevPage').disabled = (currentPage === 1);
+  document.getElementById('btnNextPage').disabled = (currentPage === maxPage);
+
   let sortedLeaderboard = Object.entries(leaderboardMap).sort((a, b) => b[1] - a[1]);
   document.getElementById('leaderboard').innerHTML = sortedLeaderboard.slice(0, 10).map(([name, sum], i) => `
     <div class="leaderboard-item">
@@ -667,7 +712,7 @@ async function renderAll() {
   ).join('') || '<p style="color: var(--text-muted); padding: 5px;">No operational timeline metrics captured.</p>';
 }
 
-function switchTeam(id) { if (!isMutatingLock) { currentTeamId = id; selectedMemberName = "all"; renderAll(); } }
+function switchTeam(id) { if (!isMutatingLock) { currentTeamId = id; selectedMemberName = "all"; currentPage = 1; renderAll(); } }
 
 function openAddTeamModal() { if (!isAdmin) { openAuthModal(true); return; } document.getElementById("newTeamInputName").value = ""; openModal("addTeamModal"); }
 async function submitAddTeam() {
@@ -677,6 +722,7 @@ async function submitAddTeam() {
     let res = await db.addTeam(name);
     currentTeamId = res.id;
     closeModal("addTeamModal");
+    currentPage = 1;
     await renderAll();
   }, `Successfully added "${name}" parameters.`);
 }
@@ -691,6 +737,7 @@ function openDeleteTeamModal() {
       let raw = await db._getRaw();
       currentTeamId = raw.teams[0]?.id || "all";
       closeModal("deleteConfirmModal");
+      currentPage = 1;
       await renderAll();
     }, "Dropped structural branch directory array row.");
   };
