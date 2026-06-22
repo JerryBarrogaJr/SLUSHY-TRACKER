@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SLUSHY PRO TRACKER (SUPABASE EDITION)</title>
+<title>SLUSHY PRO TRACKER (ULTIMATE PROD EDITION)</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -97,6 +96,7 @@ th{ background: rgba(255,255,255,0.01); color: var(--text-muted); font-weight: 5
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: rgba(255,255,255,0.01); }
 
+/* OPTIMIZATION UPGRADE: PAGINATION CONTROL FOOTER */
 .pagination-footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: rgba(255, 255, 255, 0.01); border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
 .pagination-info { font-size: 12px; color: var(--text-muted); }
 .pagination-buttons { display: flex; gap: 6px; align-items: center; }
@@ -355,118 +355,97 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <script>
-// ==========================================
-// 🛠️ SUPABASE CLOUD CONNECTION LAYER CONFIG
-// ==========================================
-const rawUrl = "sb_publishable_RQgRZY-vFTSlDFdVUIA3sg_9PAwBiUA";
-const SUPABASE_URL = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl.replace(".supabase.co", "")}.supabase.co`;
-const SUPABASE_ANON_KEY = "sb_secret_4iZpUT6CdQxulzYgm337lA_pKodJmH_";       
-
-let supabase = null;
-try {
-  if (window.supabase && typeof window.supabase.createClient === 'function') {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-} catch(e) {
-  console.warn("Supabase initialization caught: running interface protection.", e);
-}
+const SEED_DATA = {
+  teams: [
+    { id: "t1", name: "Team 1" }, { id: "t2", name: "Team 2" },
+    { id: "t3", name: "Team 3" }, { id: "t4", name: "Team 4" }, { id: "t5", name: "Team 5" }
+  ],
+  members: [],
+  sales: []
+};
 
 const db = {
   async _simulateNetwork() {
     const bar = document.getElementById("globalNetworkBar");
-    if (!bar) return;
     bar.style.opacity = "1";
     bar.style.width = "30%";
-    await new Promise(resolve => setTimeout(resolve, 30));
+    await new Promise(resolve => setTimeout(resolve, 80 + Math.random() * 150));
     bar.style.width = "80%";
-    await new Promise(resolve => setTimeout(resolve, 20));
+    await new Promise(resolve => setTimeout(resolve, 50));
     bar.style.width = "100%";
-    setTimeout(() => { bar.style.opacity = "0"; bar.style.width = "0%"; }, 100);
+    setTimeout(() => { bar.style.opacity = "0"; bar.style.width = "0%"; }, 200);
   },
   async _getRaw() {
-    if (!supabase || SUPABASE_URL.includes("sb_publishable")) {
-      return { 
-        teams: [{id: "demo_t", name: "Demo Operational Group"}], 
-        members: [{id: "demo_m", team_id: "demo_t", name: "System Operator"}], 
-        sales: [{id: "demo_s", team_id: "demo_t", member_id: "demo_m", fan_name: "Test Connection Client", amount: 120.00, timestamp: new Date().toISOString()}] 
-      };
-    }
-    try {
-      const [teamsRes, membersRes, salesRes] = await Promise.all([
-        supabase.from('teams').select('*'),
-        supabase.from('members').select('*'),
-        supabase.from('sales').select('*')
-      ]);
-      return { 
-        teams: teamsRes.data || [], 
-        members: membersRes.data || [], 
-        sales: salesRes.data || [] 
-      };
-    } catch(e) {
-      return { 
-        teams: [{id: "demo_t", name: "Demo Operational Group"}], 
-        members: [{id: "demo_m", team_id: "demo_t", name: "System Operator"}], 
-        sales: [{id: "demo_s", team_id: "demo_t", member_id: "demo_m", fan_name: "Test Connection Client", amount: 120.00, timestamp: new Date().toISOString()}] 
-      };
-    }
+    let data = localStorage.getItem("sales_tracker_normalized");
+    if (!data) { localStorage.setItem("sales_tracker_normalized", JSON.stringify(SEED_DATA)); return SEED_DATA; }
+    return JSON.parse(data);
+  },
+  async _saveRaw(data) {
+    localStorage.setItem("sales_tracker_normalized", JSON.stringify(data));
   },
   async fetchAll() {
     await this._simulateNetwork();
     return await this._getRaw();
   },
   async addTeam(name) {
-    if (!name || name.trim().length === 0) throw new Error("Validation Error: Team name missing.");
+    if (!name || name.trim().length === 0) throw new Error("Validation Error: Team name parameter missing.");
     await this._simulateNetwork();
+    let raw = await this._getRaw();
     let newTeam = { id: "team_" + Date.now(), name: name.trim() };
-    if (!supabase || SUPABASE_URL.includes("sb_publishable")) return newTeam;
-    const { error } = await supabase.from('teams').insert([newTeam]);
-    if (error) throw new Error(error.message);
+    raw.teams.push(newTeam);
+    await this._saveRaw(raw);
     return newTeam;
   },
   async deleteTeam(teamId) {
-    if (!isAdmin) throw new Error("Security Exception: Access unverified.");
+    if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
-    if (!supabase || SUPABASE_URL.includes("sb_publishable")) return;
-    const { error } = await supabase.from('teams').delete().eq('id', teamId);
-    if (error) throw new Error(error.message);
+    let raw = await this._getRaw();
+    raw.teams = raw.teams.filter(t => t.id !== teamId);
+    raw.members = raw.members.filter(m => m.team_id !== teamId);
+    raw.sales = raw.sales.filter(s => s.team_id !== teamId);
+    await this._saveRaw(raw);
   },
   async addMember(teamId, name) {
     if (!name || name.trim().length === 0) throw new Error("Validation Error: Profile string cannot be blank.");
     await this._simulateNetwork();
+    let raw = await this._getRaw();
     let newMember = { id: "mem_" + Date.now(), team_id: teamId, name: name.trim() };
-    if (!supabase || SUPABASE_URL.includes("sb_publishable")) return newMember;
-    const { error } = await supabase.from('members').insert([newMember]);
-    if (error) throw new Error(error.message);
+    raw.members.push(newMember);
+    await this._saveRaw(raw);
     return newMember;
   },
   async deleteMember(memberId) {
-    if (!isAdmin) throw new Error("Security Exception: Access unverified.");
+    if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
-    if (!supabase || SUPABASE_URL.includes("sb_publishable")) return;
-    const { error } = await supabase.from('members').delete().eq('id', memberId);
-    if (error) throw new Error(error.message);
+    let raw = await this._getRaw();
+    raw.members = raw.members.filter(m => m.id !== memberId);
+    raw.sales = raw.sales.filter(s => s.member_id !== memberId);
+    await this._saveRaw(raw);
   },
   async upsertSale(saleData) {
-    if (!saleData.fan_name || saleData.fan_name.trim().length === 0) throw new Error("Validation Failure: Fan name check failed.");
-    if (isNaN(saleData.amount) || saleData.amount <= 0) throw new Error("Validation Failure: Financial constraint violated.");
-    if (isNaN(Date.parse(saleData.timestamp))) throw new Error("Validation Failure: Timeframe timestamp is malformed.");
+    if (!saleData.fan_name || saleData.fan_name.trim().length === 0) throw new Error("Validation Failure: Fan name identity check failed.");
+    if (isNaN(saleData.amount) || saleData.amount <= 0) throw new Error("Validation Failure: Financial entity payload value constraint violated.");
+    if (isNaN(Date.parse(saleData.timestamp))) throw new Error("Validation Failure: Target event logging execution timeframe is malformed.");
     
     await this._simulateNetwork();
+    let raw = await this._getRaw();
     saleData.fan_name = saleData.fan_name.trim();
     
-    if (!saleData.id) {
+    if (saleData.id) {
+      let idx = raw.sales.findIndex(s => s.id === saleData.id);
+      if (idx !== -1) raw.sales[idx] = saleData;
+    } else {
       saleData.id = "sale_" + Date.now();
+      raw.sales.push(saleData);
     }
-    if (!supabase || SUPABASE_URL.includes("sb_publishable")) return saleData;
-    const { error } = await supabase.from('sales').upsert([saleData]);
-    if (error) throw new Error(error.message);
+    await this._saveRaw(raw);
     return saleData;
   },
   async deleteSale(saleId) {
     await this._simulateNetwork();
-    if (!supabase || SUPABASE_URL.includes("sb_publishable")) return;
-    const { error } = await supabase.from('sales').delete().eq('id', saleId);
-    if (error) throw new Error(error.message);
+    let raw = await this._getRaw();
+    raw.sales = raw.sales.filter(s => s.id !== saleId);
+    await this._saveRaw(raw);
   }
 };
 
@@ -477,6 +456,7 @@ let selectedMemberName = "all";
 let chartInstance = null;
 let isMutatingLock = false;
 
+// PERFORMANCE UPGRADE: PAGINATION CONTROL STATES
 let currentPage = 1;
 const rowsPerPage = 5; 
 
@@ -489,8 +469,8 @@ async function runWithGuard(actionFn, successMsg = null) {
     await actionFn();
     if (successMsg) showNotification(successMsg, "success");
   } catch (error) {
-    console.error("Transaction Error:", error);
-    showNotification(error.message || "Action processed.", "error");
+    console.error("Database Transaction Exception:", error);
+    showNotification(error.message || "Network Error: Data synchronization pipeline interrupted.", "error");
   } finally {
     setGlobalDisabledStates(false);
   }
@@ -499,7 +479,8 @@ async function runWithGuard(actionFn, successMsg = null) {
 function setGlobalDisabledStates(disabled) {
   isMutatingLock = disabled;
   const selectors = '.btn, .small, .btn-icon, select, input, .btn-submit, .close, .btn-pager';
-  document.querySelectorAll(selectors).forEach(b => {
+  const buttons = document.querySelectorAll(selectors);
+  buttons.forEach(b => {
     b.disabled = disabled;
     b.style.pointerEvents = disabled ? 'none' : 'auto';
   });
@@ -521,7 +502,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setTimeout(() => {
     const preloader = document.getElementById("slushy-preloader");
     if(preloader) { preloader.style.opacity = "0"; preloader.style.visibility = "hidden"; }
-  }, 400);
+  }, 600);
   updateAuthUI();
 });
 
@@ -597,6 +578,7 @@ function matchTimeframeFilter(timestampStr) {
   return true;
 }
 
+// PERFORMANCE UPGRADE: PAGINATION EVENT HANDLING INTERFACE BUTTONS
 function changePage(direction) {
   if (isMutatingLock) return;
   currentPage += direction;
@@ -605,14 +587,6 @@ function changePage(direction) {
 
 async function renderAll() {
   let appData = await db._getRaw();
-  
-  if (supabase && !SUPABASE_URL.includes("sb_publishable")) {
-    // Hidden standard connection notice
-  } else {
-    document.getElementById("notificationMessage").innerText = "Running App in Staging Mode. Provide valid credentials in configuration to connect database.";
-    document.getElementById("appNotification").className = "notification-banner info";
-    document.getElementById("appNotification").style.display = "flex";
-  }
   
   let tabHtml = '';
   appData.teams.forEach(t => {
@@ -638,25 +612,29 @@ async function renderAll() {
   let now = new Date();
   let leaderboardMap = {};
 
+  // MEMOIZATION UPGRADE: Pre-aggregate calculations via linear iteration
   appData.sales.forEach(s => {
     let sDate = new Date(s.timestamp);
-    overallAllTime += parseFloat(s.amount);
-    if (sDate.toDateString() === now.toDateString()) todayTotal += parseFloat(s.amount);
-    if (sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear()) monthTotal += parseFloat(s.amount);
+    overallAllTime += s.amount;
+    if (sDate.toDateString() === now.toDateString()) todayTotal += s.amount;
+    if (sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear()) monthTotal += s.amount;
   });
 
+  // Filter members dataset list array down first
   let displayMembersList = relevantMembers.filter(member => {
     if (selectedMemberName !== "all" && member.name !== selectedMemberName) return false;
     return true;
   });
 
+  // Build metrics for all filtered items first (important for correct totals regardless of pagination page)
   displayMembersList.forEach(member => {
     let memberSales = appData.sales.filter(s => s.member_id === member.id && matchTimeframeFilter(s.timestamp));
-    let memberFilteredSum = memberSales.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+    let memberFilteredSum = memberSales.reduce((acc, curr) => acc + curr.amount, 0);
     teamTotal += memberFilteredSum;
     leaderboardMap[member.name] = (leaderboardMap[member.name] || 0) + memberFilteredSum;
   });
 
+  // PERFORMANCE UPGRADE: Paginate filtered listing rows array subset split
   let totalItems = displayMembersList.length;
   let maxPage = Math.ceil(totalItems / rowsPerPage) || 1;
   if (currentPage > maxPage) currentPage = maxPage;
@@ -666,10 +644,11 @@ async function renderAll() {
   let endIndex = Math.min(startIndex + rowsPerPage, totalItems);
   let paginatedMembers = displayMembersList.slice(startIndex, startIndex + rowsPerPage);
 
+  // Render out the slice subset rows instead of the whole collection loop
   let tbodyHtml = '';
   paginatedMembers.forEach(member => {
     let memberSales = appData.sales.filter(s => s.member_id === member.id && matchTimeframeFilter(s.timestamp));
-    let memberFilteredSum = memberSales.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+    let memberFilteredSum = memberSales.reduce((acc, curr) => acc + curr.amount, 0);
 
     let salesRowsHtml = memberSales.map(s => {
       let dObj = new Date(s.timestamp);
@@ -682,7 +661,7 @@ async function renderAll() {
             <div class="date">${localizedDate} <span class="time-tag">⏰ ${localizedTime}</span></div>
           </div>
           <div class="saleRowRight">
-            <div class="amount">$${parseFloat(s.amount).toFixed(2)}</div>
+            <div class="amount">$${s.amount.toFixed(2)}</div>
             <div class="saleActions">
               <button class="btn-icon" onclick="openSaleModal('${s.team_id}', '${member.id}', '${s.id}')">✏️</button>
               <button class="btn-icon" onclick="executeDeleteSale('${s.id}')">❌</button>
@@ -717,6 +696,7 @@ async function renderAll() {
   document.getElementById('daily').innerText = '$' + todayTotal.toFixed(2);
   document.getElementById('monthly').innerText = '$' + monthTotal.toFixed(2);
 
+  // Update footer UI strings values
   document.getElementById('paginationInfo').innerText = totalItems > 0 
     ? `Showing ${startIndex + 1}-${endIndex} of ${totalItems} members`
     : `Showing 0-0 of 0 members`;
@@ -867,11 +847,11 @@ async function renderGlobalChart(){
     let d = new Date(sale.timestamp); if(isNaN(d.getTime())) return;
     if (mode === 'monthly') {
       let key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      dataPoints[key] = (dataPoints[key] || 0) + parseFloat(sale.amount);
+      dataPoints[key] = (dataPoints[key] || 0) + sale.amount;
     } else {
       let day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
       let monday = new Date(d.setDate(diff)), key = monday.toISOString().split('T')[0];
-      dataPoints[key] = (dataPoints[key] || 0) + parseFloat(sale.amount);
+      dataPoints[key] = (dataPoints[key] || 0) + sale.amount;
     }
   });
 
