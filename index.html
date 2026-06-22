@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SLUSHY PRO TRACKER (SUPABASE EDITION)</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght=300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -384,7 +384,6 @@ const db = {
     setTimeout(() => { bar.style.opacity = "0"; bar.style.width = "0%"; }, 100);
   },
   async _getRaw() {
-    // Fail-safe Protection: If keys are dummy placeholders, drop out gracefully into mock presentation metrics
     if (!supabase || SUPABASE_URL.includes("sb_publishable")) {
       return { 
         teams: [{id: "demo_t", name: "Demo Operational Group"}], 
@@ -608,7 +607,7 @@ async function renderAll() {
   let appData = await db._getRaw();
   
   if (supabase && !SUPABASE_URL.includes("sb_publishable")) {
-    // Real mode warning banner hidden
+    // Hidden standard connection notice
   } else {
     document.getElementById("notificationMessage").innerText = "Running App in Staging Mode. Provide valid credentials in configuration to connect database.";
     document.getElementById("appNotification").className = "notification-banner info";
