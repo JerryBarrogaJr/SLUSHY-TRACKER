@@ -458,7 +458,7 @@ const db = {
 
 const ADMIN_PASSWORD = "admin123"; 
 let isAdmin = false; 
-let currentTeamId = "all";
+let currentTeamId = "all"; // Force 'all' as standard configuration runtime state variable
 let selectedMemberName = "all";
 let chartInstance = null;
 let isMutatingLock = false;
@@ -472,7 +472,7 @@ async function runWithGuard(actionFn, successMsg = null) {
   if (isMutatingLock) return;
   setGlobalDisabledStates(true);
   try {
-    // Clear any persistent notifications right as a new transaction kicks off
+    // Clear persistent notifications explicitly when starting operations
     closeNotification();
     await actionFn();
     if (successMsg) showNotification(successMsg, "success");
@@ -502,8 +502,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById('rangeEndDate').value = todayStr;
 
   await runWithGuard(async () => {
-    let raw = await db.fetchAll();
-    if (raw.teams.length > 0) currentTeamId = raw.teams[0].id;
+    // Standard initialization structure targets 'all' automatically
+    currentTeamId = "all"; 
     await renderAll();
   });
 
@@ -519,7 +519,8 @@ function showNotification(msg, type = "info") {
   document.getElementById("notificationMessage").innerText = msg;
   banner.className = `notification-banner ${type}`;
   banner.style.display = "flex";
-  if(type !== "error") { setTimeout(closeNotification, 4000); }
+  // Enforce automatic closing for non-critical notification responses
+  if(type !== "error") { setTimeout(closeNotification, 3000); }
 }
 function closeNotification() { document.getElementById("appNotification").style.display = "none"; }
 function openModal(id) { if (!isMutatingLock) document.getElementById(id).style.display = "flex"; }
@@ -595,11 +596,11 @@ function changePage(direction) {
 async function renderAll() {
   let appData = await db._getRaw();
   
-  let tabHtml = '';
+  // Render ALL TEAMS tab configuration structure first sequentially
+  let tabHtml = `<div class="tab ${currentTeamId === 'all' ? 'active' : ''}" onclick="switchTeam('all')">ALL TEAMS</div>`;
   appData.teams.forEach(t => {
     tabHtml += `<div class="tab ${currentTeamId === t.id ? 'active' : ''}" onclick="switchTeam('${t.id}')">${escapeHtml(t.name)}</div>`;
   });
-  tabHtml += `<div class="tab ${currentTeamId === 'all' ? 'active' : ''}" onclick="switchTeam('all')">ALL TEAMS</div>`;
   document.getElementById('tabs').innerHTML = tabHtml;
 
   document.getElementById("deleteTeamBtn").style.display = (isAdmin && currentTeamId !== "all") ? "inline-block" : "none";
@@ -735,8 +736,7 @@ function openDeleteTeamModal() {
   btn.onclick = async () => {
     await runWithGuard(async () => {
       await db.deleteTeam(currentTeamId);
-      let raw = await db._getRaw();
-      currentTeamId = raw.teams[0]?.id || "all";
+      currentTeamId = "all";
       closeModal("deleteConfirmModal");
       currentPage = 1;
       await renderAll();
