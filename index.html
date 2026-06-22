@@ -356,12 +356,13 @@ details[open] .arrow{ transform:rotate(90deg) }
 
 <script>
 // ==========================================
-// 🛠️ SUPABASE CONFIGURATION LAYER
+// 🛠️ SUPABASE CONFIGURATION LAYER (RENAME TO PREVENT CONFLICT)
 // ==========================================
 const SUPABASE_URL = "https://bbydcdctqmqnszjmryke.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_HL65zJ25Dof7-zDitYoGkQ_EX7KLkoF";
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Fixed variable assignment overlap conflict completely
+const trackerSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const db = {
   async _simulateNetwork() {
@@ -375,9 +376,9 @@ const db = {
   
   async _getRaw() {
     const [teamsRes, membersRes, salesRes] = await Promise.all([
-      supabaseClient.from('teams').select('*').order('name'),
-      supabaseClient.from('members').select('*').order('name'),
-      supabaseClient.from('sales').select('*').order('timestamp', { ascending: false })
+      trackerSupabase.from('teams').select('*').order('name'),
+      trackerSupabase.from('members').select('*').order('name'),
+      trackerSupabase.from('sales').select('*').order('timestamp', { ascending: false })
     ]);
     
     if (teamsRes.error) throw teamsRes.error;
@@ -401,7 +402,7 @@ const db = {
     await this._simulateNetwork();
     let newTeam = { id: "team_" + Date.now(), name: name.trim() };
     
-    const { error } = await supabaseClient.from('teams').insert([newTeam]);
+    const { error } = await trackerSupabase.from('teams').insert([newTeam]);
     if (error) throw error;
     return newTeam;
   },
@@ -410,7 +411,7 @@ const db = {
     if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
     
-    const { error } = await supabaseClient.from('teams').delete().eq('id', teamId);
+    const { error } = await trackerSupabase.from('teams').delete().eq('id', teamId);
     if (error) throw error;
   },
 
@@ -419,7 +420,7 @@ const db = {
     await this._simulateNetwork();
     let newMember = { id: "mem_" + Date.now(), team_id: teamId, name: name.trim() };
     
-    const { error } = await supabaseClient.from('members').insert([newMember]);
+    const { error } = await trackerSupabase.from('members').insert([newMember]);
     if (error) throw error;
     return newMember;
   },
@@ -428,7 +429,7 @@ const db = {
     if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
     
-    const { error } = await supabaseClient.from('members').delete().eq('id', memberId);
+    const { error } = await trackerSupabase.from('members').delete().eq('id', memberId);
     if (error) throw error;
   },
 
@@ -444,21 +445,21 @@ const db = {
       saleData.id = "sale_" + Date.now();
     }
     
-    const { error } = await supabaseClient.from('sales').upsert([saleData]);
+    const { error } = await trackerSupabase.from('sales').upsert([saleData]);
     if (error) throw error;
     return saleData;
   },
 
   async deleteSale(saleId) {
     await this._simulateNetwork();
-    const { error } = await supabaseClient.from('sales').delete().eq('id', saleId);
+    const { error } = await trackerSupabase.from('sales').delete().eq('id', saleId);
     if (error) throw error;
   }
 };
 
 const ADMIN_PASSWORD = "admin123"; 
 let isAdmin = false; 
-let currentTeamId = "all"; // Forces 'all' as structural configuration standard loading context
+let currentTeamId = "all"; 
 let selectedMemberName = "all";
 let chartInstance = null;
 let isMutatingLock = false;
@@ -593,7 +594,6 @@ function changePage(direction) {
 async function renderAll() {
   let appData = await db._getRaw();
   
-  // Renders ALL TEAMS explicitly as the leading tab selection element
   let tabHtml = `<div class="tab ${currentTeamId === 'all' ? 'active' : ''}" onclick="switchTeam('all')">ALL TEAMS</div>`;
   appData.teams.forEach(t => {
     tabHtml += `<div class="tab ${currentTeamId === t.id ? 'active' : ''}" onclick="switchTeam('${t.id}')">${escapeHtml(t.name)}</div>`;
@@ -836,13 +836,11 @@ function executeDeleteSale(id) {
 function openGraphModal() {
   if (isMutatingLock) return;
   openModal("graphModal");
-  // Fires calculations immediately so canvas context isn't blank
   renderGlobalChart();
 }
 
 function closeGraphModal() {
   closeModal("graphModal");
-  // Clear trace to ensure fresh canvas instantiation when reopened
   if (chartInstance) {
     chartInstance.destroy();
     chartInstance = null;
@@ -873,22 +871,70 @@ async function renderGlobalChart(){
   });
 
   if(chartInstance) chartInstance.destroy();
+
+  // Inline Custom Plugin to draw exact dollar amounts cleanly above each bar
+  const topLabelsPlugin = {
+    id: 'topLabelsPlugin',
+    afterDatasetsDraw(chart) {
+      const { ctx, scales: { x, y } } = chart;
+      chart.data.datasets.forEach((dataset, index) => {
+        const meta = chart.getDatasetMeta(index);
+        meta.data.forEach((bar, i) => {
+          const val = dataset.data[i];
+          if (val === undefined || val === null) return;
+          const displayLabel = '$' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          ctx.save();
+          ctx.fillStyle = '#e2e8f0'; // matches --text-main
+          ctx.font = 'bold 11px Poppins';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          // Draw title text 8px above the calculated top position coordinates of the bar asset
+          ctx.fillText(displayLabel, bar.x, bar.y - 8);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   chartInstance = new Chart(document.getElementById('salesChart'), {
-    type: 'line',
+    type: 'bar', // Updated type context to standard bar configuration layout
     data: {
       labels: uiLabels,
       datasets: [{ 
-        label: 'Global Revenue ($)', data: chartValues, borderColor: '#00ebd6', backgroundColor: 'rgba(0, 235, 214, 0.05)', fill: true, tension: 0.25, pointBackgroundColor: '#6366f1'
+        label: 'Global Revenue ($)', 
+        data: chartValues, 
+        backgroundColor: 'rgba(0, 235, 214, 0.35)', 
+        borderColor: '#00ebd6', 
+        borderWidth: 2,
+        borderRadius: 6,
+        hoverBackgroundColor: 'rgba(0, 235, 214, 0.65)'
       }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      scales: {
-        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94a3b8' } },
-        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+      responsive: true, 
+      maintainAspectRatio: false,
+      layout: {
+        padding: {
+          top: 25 // Adds context space over top boundary so high bars don't clip data labels
+        }
       },
-      plugins: { legend: { display: false } }
-    }
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          grid: { color: 'rgba(255,255,255,0.03)' }, 
+          ticks: { color: '#94a3b8' } 
+        },
+        x: { 
+          grid: { display: false }, 
+          ticks: { color: '#94a3b8' } 
+        }
+      },
+      plugins: { 
+        legend: { display: false } 
+      }
+    },
+    plugins: [topLabelsPlugin] // Registers the custom label layout drawing calculations hook engine
   });
 }
 
