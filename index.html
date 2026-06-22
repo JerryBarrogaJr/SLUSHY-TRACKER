@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SLUSHY PRO TRACKER (SUPABASE READY)</title>
+<title>SLUSHY PRO TRACKER (ULTIMATE PROD EDITION)</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -36,6 +36,9 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 @keyframes shine { to { background-position: 200% center; } }
 @keyframes loadProgress { 0% { width: 0%; } 100% { width: 100%; } }
 
+/* GLOBAL NETWORK LOADER BAR FOR SUPABASE SIMULATION */
+#globalNetworkBar { width: 0%; height: 3px; background: linear-gradient(90deg, var(--secondary), var(--accent)); position: fixed; top: 0; left: 0; z-index: 10000; transition: width 0.2s ease, opacity 0.4s ease; opacity: 0; }
+
 .main-viewport { flex: 1; padding: 20px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
 
 .notification-banner { display: none; align-items: center; justify-content: space-between; padding: 14px 20px; border-radius: 12px; font-size: 14px; font-weight: 500; animation: slideIn 0.25s ease; width: 100%; }
@@ -57,8 +60,9 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 .tab:hover { background: var(--bg-input); color: var(--text-main); }
 .tab.active{ border-color: var(--secondary); color: var(--secondary); background: rgba(0, 235, 214, 0.04); font-weight: 600; }
 
-.btn { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); padding: 11px 18px; border-radius: 12px; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
+.btn { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); padding: 11px 18px; border-radius: 12px; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; position: relative; }
 .btn:hover { background: var(--bg-input); border-color: var(--text-muted); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed !important; }
 #addMemberBtn, #addTeamBtn { border-color: rgba(0, 235, 214, 0.2); color: var(--secondary); }
 #addMemberBtn:hover, #addTeamBtn:hover { background: rgba(0, 235, 214, 0.05); }
 .btn-secondary { background: var(--bg-input); color: var(--text-muted); }
@@ -93,16 +97,18 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: rgba(255,255,255,0.01); }
 
 .small{ padding:6px 12px; border:1px solid transparent; border-radius:6px; color:#fff; cursor:pointer; margin:2px; font-weight:500; font-size: 12px; transition: all 0.2s;}
+.small:disabled { opacity: 0.4; cursor: not-allowed; }
 .green{ background: rgba(16, 185, 129, 0.08); color: #34d399; border-color: rgba(16, 185, 129, 0.15); }
-.green:hover{ background: var(--success); color: white; }
+.green:hover:not(:disabled){ background: var(--success); color: white; }
 .red{ background: rgba(239, 68, 68, 0.08); color: #f87171; border-color: rgba(239, 68, 68, 0.15); }
-.red:hover{ background: var(--danger); color: white; }
+.red:hover:not(:disabled){ background: var(--danger); color: white; }
 
 .saleRow{ display:flex; justify-content:space-between; align-items:center; background: var(--bg-input); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:6px; font-size:13px; }
 .saleRowRight { display: flex; align-items: center; gap: 12px; }
 .saleActions { display: flex; gap: 6px; }
 .btn-icon { background: none; border: none; cursor: pointer; font-size: 13px; padding: 4px; border-radius: 6px; opacity: 0.6; transition: all 0.2s; }
 .btn-icon:hover { background: rgba(255,255,255,0.04); opacity: 1; }
+.btn-icon:disabled { opacity: 0.2; cursor: not-allowed; }
 .fan{font-weight:500; color: var(--text-main);}
 .date{font-size:11px; color: var(--text-muted); margin-top: 2px;}
 .time-tag{font-size:11px; font-weight:500; color: var(--primary); margin-left: 6px;}
@@ -132,7 +138,6 @@ details[open] .arrow{ transform:rotate(90deg) }
 .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
 .form-group label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
 .form-group input, .form-group select { width: 100%; font-size: 13px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border); }
-.time-select-row { display: flex; gap: 10px; }
 
 .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
 </style>
@@ -143,6 +148,8 @@ details[open] .arrow{ transform:rotate(90deg) }
   <div class="preloader-title">SLUSHY PRO TRACKER</div>
   <div class="loader-track"><div class="loader-bar"></div></div>
 </div>
+
+<div id="globalNetworkBar"></div>
 
 <header>
   <h1>SLUSHY PRO TRACKER</h1>
@@ -164,8 +171,8 @@ details[open] .arrow{ transform:rotate(90deg) }
     <button id="addMemberBtn" class="btn" onclick="openAddMemberModal()">➕ Add Member</button>
     <button id="addTeamBtn" class="btn" onclick="openAddTeamModal()">➕ Add Team</button>
     <button id="deleteTeamBtn" class="btn btn-danger" onclick="openDeleteTeamModal()">❌ Delete Current Team</button>
-    <button class="btn btn-secondary" onclick="exportCSV()">📥 Export CSV</button>
-    <button class="btn btn-secondary" onclick="openGraphModal()">📈 View All-Team Graph</button>
+    <button id="exportCsvBtn" class="btn btn-secondary" onclick="exportCSV()">📥 Export CSV</button>
+    <button id="viewGraphBtn" class="btn btn-secondary" onclick="openGraphModal()">📈 View All-Team Graph</button>
   </div>
 
   <div class="filterBox">
@@ -235,7 +242,6 @@ details[open] .arrow{ transform:rotate(90deg) }
   </div>
 </div>
 
-<!-- POPUP MODALS OVERLAY -->
 <div id="authModal" class="modal">
   <div class="modal-content auth-modal-content" style="max-width: 400px;">
     <div class="modal-header auth-modal-header">
@@ -243,7 +249,7 @@ details[open] .arrow{ transform:rotate(90deg) }
       <span class="close" onclick="closeAuthModal()">&times;</span>
     </div>
     <div id="authWarning" class="auth-warning-box">
-      ⚠️ <strong>Access Denied:</strong> Administrative clearance code required.
+      ⚠️ <strong>Access Denied:</strong> Administrative authorization required.
     </div>
     <div class="form-group">
       <label for="authPasscode">Admin Passcode</label>
@@ -261,7 +267,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     </div>
     <div class="prompt-group">
       <input type="text" id="newTeamInputName" placeholder="e.g., Team Alpha">
-      <button class="btn btn-submit" onclick="submitAddTeam()">Create Team</button>
+      <button id="newTeamSubmitBtn" class="btn btn-submit" onclick="submitAddTeam()">Create Team</button>
     </div>
   </div>
 </div>
@@ -274,7 +280,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     </div>
     <div class="prompt-group">
       <input type="text" id="newMemberInputName" placeholder="e.g., Alice Smith">
-      <button class="btn btn-submit" onclick="submitAddMember()">Add Member</button>
+      <button id="newMemberSubmitBtn" class="btn btn-submit" onclick="submitAddMember()">Add Member</button>
     </div>
   </div>
 </div>
@@ -335,8 +341,8 @@ details[open] .arrow{ transform:rotate(90deg) }
 
 <script>
 /**
- * ⚡ RELATIONAL DATA LAYER ARCHITECTURE (SUPABASE READY)
- * Instead of deeply nested object structures, data arrays are completely normalized.
+ * ⚡ RELATIONAL DATA LAYER ARCHITECTURE WITH SIMULATED LATENCY PROPAGATION
+ * Perfectly mimics Supabase network activity for seamless production drops.
  */
 const SEED_DATA = {
   teams: [
@@ -347,8 +353,18 @@ const SEED_DATA = {
   sales: []
 };
 
-// Isolated Asynchronous Data Engine Layer
+// Simulated Network Controller & Async Interface
 const db = {
+  async _simulateNetwork() {
+    const bar = document.getElementById("globalNetworkBar");
+    bar.style.opacity = "1";
+    bar.style.width = "30%";
+    await new Promise(resolve => setTimeout(resolve, 80 + Math.random() * 150)); // Simulated latency
+    bar.style.width = "80%";
+    await new Promise(resolve => setTimeout(resolve, 50));
+    bar.style.width = "100%";
+    setTimeout(() => { bar.style.opacity = "0"; bar.style.width = "0%"; }, 200);
+  },
   async _getRaw() {
     let data = localStorage.getItem("sales_tracker_normalized");
     if (!data) { localStorage.setItem("sales_tracker_normalized", JSON.stringify(SEED_DATA)); return SEED_DATA; }
@@ -358,9 +374,11 @@ const db = {
     localStorage.setItem("sales_tracker_normalized", JSON.stringify(data));
   },
   async fetchAll() {
+    await this._simulateNetwork();
     return await this._getRaw();
   },
   async addTeam(name) {
+    await this._simulateNetwork();
     let raw = await this._getRaw();
     let newTeam = { id: "team_" + Date.now(), name };
     raw.teams.push(newTeam);
@@ -368,6 +386,7 @@ const db = {
     return newTeam;
   },
   async deleteTeam(teamId) {
+    await this._simulateNetwork();
     let raw = await this._getRaw();
     raw.teams = raw.teams.filter(t => t.id !== teamId);
     raw.members = raw.members.filter(m => m.team_id !== teamId);
@@ -375,6 +394,7 @@ const db = {
     await this._saveRaw(raw);
   },
   async addMember(teamId, name) {
+    await this._simulateNetwork();
     let raw = await this._getRaw();
     let newMember = { id: "mem_" + Date.now(), team_id: teamId, name };
     raw.members.push(newMember);
@@ -382,12 +402,14 @@ const db = {
     return newMember;
   },
   async deleteMember(memberId) {
+    await this._simulateNetwork();
     let raw = await this._getRaw();
     raw.members = raw.members.filter(m => m.id !== memberId);
     raw.sales = raw.sales.filter(s => s.member_id !== memberId);
     await this._saveRaw(raw);
   },
   async upsertSale(saleData) {
+    await this._simulateNetwork();
     let raw = await this._getRaw();
     if (saleData.id) {
       let idx = raw.sales.findIndex(s => s.id === saleData.id);
@@ -400,22 +422,45 @@ const db = {
     return saleData;
   },
   async deleteSale(saleId) {
+    await this._simulateNetwork();
     let raw = await this._getRaw();
     raw.sales = raw.sales.filter(s => s.id !== saleId);
     await this._saveRaw(raw);
   }
 };
 
-// Application State Variables
+// Global App States
 const ADMIN_PASSWORD = "admin123"; 
 let isAdmin = false; 
 let currentTeamId = "all";
 let selectedMemberName = "all";
 let chartInstance = null;
+let isMutatingLock = false; // Prevents double click submission collisions
 
 let activeSaleContext = { teamId: null, memberId: null, saleId: null };
 
-// Lifecycle Initialization
+// Global Execution Guard Wrapper (Error Boundary Handling)
+async function runWithGuard(actionFn, successMsg = null) {
+  if (isMutatingLock) return;
+  setGlobalDisabledStates(true);
+  try {
+    await actionFn();
+    if (successMsg) showNotification(successMsg, "success");
+  } catch (error) {
+    console.error("Database Transaction Exception:", error);
+    showNotification("Network Error: Data synchronization pipeline interrupted.", "error");
+  } finally {
+    setGlobalDisabledStates(false);
+  }
+}
+
+function setGlobalDisabledStates(disabled) {
+  isMutatingLock = disabled;
+  const buttons = document.querySelectorAll('.btn, .small, .btn-icon, select, input');
+  buttons.forEach(b => b.disabled = disabled);
+}
+
+// Lifecycle Initializer
 window.addEventListener("DOMContentLoaded", async () => {
   let now = new Date();
   let todayStr = now.toISOString().split('T')[0];
@@ -423,19 +468,20 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById('rangeStartDate').value = pastStr;
   document.getElementById('rangeEndDate').value = todayStr;
 
-  let raw = await db.fetchAll();
-  if (raw.teams.length > 0) currentTeamId = raw.teams[0].id;
+  await runWithGuard(async () => {
+    let raw = await db.fetchAll();
+    if (raw.teams.length > 0) currentTeamId = raw.teams[0].id;
+    await renderAll();
+  });
 
   setTimeout(() => {
     const preloader = document.getElementById("slushy-preloader");
     if(preloader) { preloader.style.opacity = "0"; preloader.style.visibility = "hidden"; }
-  }, 800);
-
+  }, 600);
   updateAuthUI();
-  await renderAll();
 });
 
-// Presentation Layer Utilities
+// UI Notification Layer
 function showNotification(msg, type = "info") {
   const banner = document.getElementById("appNotification");
   document.getElementById("notificationMessage").innerText = msg;
@@ -448,7 +494,7 @@ function openModal(id) { document.getElementById(id).style.display = "flex"; }
 function closeModal(id) { document.getElementById(id).style.display = "none"; }
 function escapeHtml(str) { return !str ? '' : String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-// Auth Management Engine
+// Authorization Components
 function openAuthModal(showWarning = false) {
   document.getElementById("authWarning").style.display = showWarning ? "block" : "none";
   document.getElementById("authPasscode").value = "";
@@ -458,11 +504,11 @@ function openAuthModal(showWarning = false) {
 function closeAuthModal() { closeModal("authModal"); }
 function submitAdminAuth() {
   if (document.getElementById("authPasscode").value === ADMIN_PASSWORD) {
-    isAdmin = true; closeAuthModal(); showNotification("Access cleared.", "success"); updateAuthUI(); renderAll();
-  } else { showNotification("Invalid credentials.", "error"); }
+    isAdmin = true; closeAuthModal(); showNotification("Cleared root access profile authorization.", "success"); updateAuthUI(); renderAll();
+  } else { showNotification("Credentials rejected.", "error"); }
 }
 function toggleAuth() {
-  if (isAdmin) { isAdmin = false; showNotification("Admin logged out.", "info"); updateAuthUI(); renderAll(); }
+  if (isAdmin) { isAdmin = false; showNotification("Cleared admin cache parameters.", "info"); updateAuthUI(); renderAll(); }
   else { openAuthModal(false); }
 }
 function updateAuthUI() {
@@ -475,7 +521,6 @@ function updateAuthUI() {
   }
 }
 
-// Filtering Matrix Logic
 function handleFilterTypeChange() {
   let type = document.getElementById("filterType").value;
   document.getElementById("customRangePicker").style.display = (type === "range") ? "flex" : "none";
@@ -510,11 +555,10 @@ function matchTimeframeFilter(timestampStr) {
   return true;
 }
 
-// Global Core UI Orchestrator Data Render
+// Global Core Sync & UI Render Implementation
 async function renderAll() {
-  let appData = await db.fetchAll();
+  let appData = await db._getRaw(); // Sync directly to avoid multi-spinner layout flickering
   
-  // Render Dynamic Navigation Tab Rows
   let tabHtml = '';
   appData.teams.forEach(t => {
     tabHtml += `<div class="tab ${currentTeamId === t.id ? 'active' : ''}" onclick="switchTeam('${t.id}')">${escapeHtml(t.name)}</div>`;
@@ -524,7 +568,6 @@ async function renderAll() {
 
   document.getElementById("deleteTeamBtn").style.display = (isAdmin && currentTeamId !== "all") ? "inline-block" : "none";
 
-  // Build Filter Dropdowns
   let relevantMembers = currentTeamId === "all" ? appData.members : appData.members.filter(m => m.team_id === currentTeamId);
   let filterSelect = document.getElementById("memberFilter");
   let savedSelVal = filterSelect.value || "all";
@@ -536,12 +579,10 @@ async function renderAll() {
   if([...uniqueNames, "all"].includes(savedSelVal)) { filterSelect.value = savedSelVal; selectedMemberName = savedSelVal; } 
   else { filterSelect.value = "all"; selectedMemberName = "all"; }
 
-  // Calculation Engines
   let teamTotal = 0, overallAllTime = 0, todayTotal = 0, monthTotal = 0;
   let now = new Date();
   let leaderboardMap = {};
 
-  // Compute standard metrics natively from unified flat array
   appData.sales.forEach(s => {
     let sDate = new Date(s.timestamp);
     overallAllTime += s.amount;
@@ -549,7 +590,6 @@ async function renderAll() {
     if (sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear()) monthTotal += s.amount;
   });
 
-  // Table Core Parsing Row Matrix loop
   let tbodyHtml = '';
   relevantMembers.forEach(member => {
     if (selectedMemberName !== "all" && member.name !== selectedMemberName) return;
@@ -567,7 +607,7 @@ async function renderAll() {
       return `
         <div class="saleRow">
           <div>
-            <div class="fan">劈 ${escapeHtml(s.fan_name)}</div>
+            <div class="fan">👤 ${escapeHtml(s.fan_name)}</div>
             <div class="date">${localizedDate} <span class="time-tag">⏰ ${localizedTime}</span></div>
           </div>
           <div class="saleRowRight">
@@ -606,64 +646,77 @@ async function renderAll() {
   document.getElementById('daily').innerText = '$' + todayTotal.toFixed(2);
   document.getElementById('monthly').innerText = '$' + monthTotal.toFixed(2);
 
-  // Render Leaderboard Components
   let sortedLeaderboard = Object.entries(leaderboardMap).sort((a, b) => b[1] - a[1]);
   document.getElementById('leaderboard').innerHTML = sortedLeaderboard.slice(0, 10).map(([name, sum], i) => `
     <div class="leaderboard-item">
       <span><strong>#${i+1}</strong> &nbsp;${escapeHtml(name)}</span>
       <span style="color:var(--success); font-weight:600;">$${sum.toFixed(2)}</span>
     </div>`
-  ).join('') || '<p style="color: var(--text-muted); padding: 5px;">No active timeline analytics recorded.</p>';
+  ).join('') || '<p style="color: var(--text-muted); padding: 5px;">No operational timeline metrics captured.</p>';
 }
 
 function switchTeam(id) { currentTeamId = id; selectedMemberName = "all"; renderAll(); }
 
-// Modal Intermediary Action Handlers
+// Action Submissions points running behind transaction guard systems
 function openAddTeamModal() { if (!isAdmin) { openAuthModal(true); return; } document.getElementById("newTeamInputName").value = ""; openModal("addTeamModal"); }
 async function submitAddTeam() {
   let name = document.getElementById("newTeamInputName").value.trim();
   if(!name) return showNotification("Field cannot be empty.", "error");
-  let res = await db.addTeam(name);
-  currentTeamId = res.id; closeModal("addTeamModal"); showNotification(`Created "${name}".`, "success"); await renderAll();
+  await runWithGuard(async () => {
+    let res = await db.addTeam(name);
+    currentTeamId = res.id;
+    closeModal("addTeamModal");
+    await renderAll();
+  }, `Successfully added "${name}" parameters.`);
 }
 
 function openDeleteTeamModal() {
   if (!isAdmin || currentTeamId === "all") return;
-  document.getElementById("deleteConfirmText").innerText = "Warning: This action will completely purge this team entity along with all linked roster profiles and associated data pipelines.";
+  document.getElementById("deleteConfirmText").innerText = "Warning: Destroying this entry drops associated linked profile users globally.";
   let btn = document.getElementById("globalDeleteConfirmBtn");
   btn.onclick = async () => {
-    await db.deleteTeam(currentTeamId);
-    let raw = await db.fetchAll();
-    currentTeamId = raw.teams[0]?.id || "all";
-    closeModal("deleteConfirmModal"); showNotification("Team system dropped.", "info"); await renderAll();
+    await runWithGuard(async () => {
+      await db.deleteTeam(currentTeamId);
+      let raw = await db._getRaw();
+      currentTeamId = raw.teams[0]?.id || "all";
+      closeModal("deleteConfirmModal");
+      await renderAll();
+    }, "Dropped structural branch directory array row.");
   };
   openModal("deleteConfirmModal");
 }
 
 function openAddMemberModal() {
   if (!isAdmin) { openAuthModal(true); return; }
-  if (currentTeamId === "all") return showNotification("Please select a target operations team tab group directly.", "error");
+  if (currentTeamId === "all") return showNotification("Target standalone operation group tab explicitly.", "error");
   document.getElementById("newMemberInputName").value = ""; openModal("addMemberModal");
 }
 async function submitAddMember() {
   let name = document.getElementById("newMemberInputName").value.trim();
   if(!name) return showNotification("Identity string required.", "error");
-  await db.addMember(currentTeamId, name);
-  closeModal("addMemberModal"); showNotification(`Profile instantiated: ${name}`, "success"); await renderAll();
+  await runWithGuard(async () => {
+    await db.addMember(currentTeamId, name);
+    closeModal("addMemberModal");
+    await renderAll();
+  }, `Instantiated profile trace for ${name}.`);
 }
 
 function executeDeleteMember(id) {
   if (!isAdmin) return;
-  document.getElementById("deleteConfirmText").innerText = "Purge target operational resource profile instantly?";
+  document.getElementById("deleteConfirmText").innerText = "Purge target resource profile index?";
   document.getElementById("globalDeleteConfirmBtn").onclick = async () => {
-    await db.deleteMember(id); closeModal("deleteConfirmModal"); showNotification("Roster asset purged.", "info"); await renderAll();
+    await runWithGuard(async () => {
+      await db.deleteMember(id);
+      closeModal("deleteConfirmModal");
+      await renderAll();
+    }, "Purged database key dependencies.");
   };
   openModal("deleteConfirmModal");
 }
 
 async function openSaleModal(teamId, memberId, saleId = null) {
   activeSaleContext = { teamId, memberId, saleId };
-  let appData = await db.fetchAll();
+  let appData = await db._getRaw();
   let mObj = appData.members.find(m => m.id === memberId);
   document.getElementById("targetMemberDisplay").innerText = mObj ? mObj.name : 'Unknown';
 
@@ -694,35 +747,40 @@ async function submitSaleEntry() {
   let dt = document.getElementById("saleDate").value;
   let tm = document.getElementById("saleTime").value;
 
-  if(!fan || isNaN(amt) || amt <= 0 || !dt || !tm) return showNotification("Verify parameter completeness.", "error");
+  if(!fan || isNaN(amt) || amt <= 0 || !dt || !tm) return showNotification("Verify parameter fields completeness.", "error");
 
   let isoTimestamp = `${dt}T${tm}:00`;
-  await db.upsertSale({
-    id: activeSaleContext.saleId,
-    team_id: activeSaleContext.teamId,
-    member_id: activeSaleContext.memberId,
-    fan_name: fan,
-    amount: amt,
-    timestamp: isoTimestamp
-  });
-
-  closeSaleModal(); showNotification("Transaction structural ledger updated.", "success"); await renderAll();
+  await runWithGuard(async () => {
+    await db.upsertSale({
+      id: activeSaleContext.saleId,
+      team_id: activeSaleContext.teamId,
+      member_id: activeSaleContext.memberId,
+      fan_name: fan,
+      amount: amt,
+      timestamp: isoTimestamp
+    });
+    closeSaleModal();
+    await renderAll();
+  }, "Synchronized dynamic transaction ledger event mapping.");
 }
 
 function executeDeleteSale(id) {
-  document.getElementById("deleteConfirmText").innerText = "Drop target transaction index record?";
+  document.getElementById("deleteConfirmText").innerText = "Drop record entry row?";
   document.getElementById("globalDeleteConfirmBtn").onclick = async () => {
-    await db.deleteSale(id); closeModal("deleteConfirmModal"); showNotification("Entry cleared.", "info"); await renderAll();
+    await runWithGuard(async () => {
+      await db.deleteSale(id);
+      closeModal("deleteConfirmModal");
+      await renderAll();
+    }, "Dropped financial index map reference entry.");
   };
   openModal("deleteConfirmModal");
 }
 
-// Analytics and Visual Graphics Core (Chart.js System)
 function openGraphModal() { openModal("graphModal"); renderGlobalChart(); }
 function closeGraphModal() { closeModal("graphModal"); }
 
 async function renderGlobalChart(){
-  let appData = await db.fetchAll();
+  let appData = await db._getRaw();
   let mode = document.getElementById("graphTimeframe").value;
   let dataPoints = {};
 
@@ -764,9 +822,8 @@ async function renderGlobalChart(){
   });
 }
 
-// Export System CSV Engine
 async function exportCSV(){
-  let appData = await db.fetchAll();
+  let appData = await db._getRaw();
   let csv = "Team,Member,Fan Name,Timestamp,Amount\n";
   appData.sales.forEach(s => {
     let teamName = appData.teams.find(t => t.id === s.team_id)?.name || 'Unknown';
