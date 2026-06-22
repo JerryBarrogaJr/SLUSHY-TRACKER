@@ -458,7 +458,7 @@ const db = {
 
 const ADMIN_PASSWORD = "admin123"; 
 let isAdmin = false; 
-let currentTeamId = "all"; // Force 'all' as standard configuration runtime state variable
+let currentTeamId = "all"; // Forces 'all' as structural configuration standard loading context
 let selectedMemberName = "all";
 let chartInstance = null;
 let isMutatingLock = false;
@@ -472,7 +472,6 @@ async function runWithGuard(actionFn, successMsg = null) {
   if (isMutatingLock) return;
   setGlobalDisabledStates(true);
   try {
-    // Clear persistent notifications explicitly when starting operations
     closeNotification();
     await actionFn();
     if (successMsg) showNotification(successMsg, "success");
@@ -502,7 +501,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById('rangeEndDate').value = todayStr;
 
   await runWithGuard(async () => {
-    // Standard initialization structure targets 'all' automatically
     currentTeamId = "all"; 
     await renderAll();
   });
@@ -519,7 +517,6 @@ function showNotification(msg, type = "info") {
   document.getElementById("notificationMessage").innerText = msg;
   banner.className = `notification-banner ${type}`;
   banner.style.display = "flex";
-  // Enforce automatic closing for non-critical notification responses
   if(type !== "error") { setTimeout(closeNotification, 3000); }
 }
 function closeNotification() { document.getElementById("appNotification").style.display = "none"; }
@@ -596,7 +593,7 @@ function changePage(direction) {
 async function renderAll() {
   let appData = await db._getRaw();
   
-  // Render ALL TEAMS tab configuration structure first sequentially
+  // Renders ALL TEAMS explicitly as the leading tab selection element
   let tabHtml = `<div class="tab ${currentTeamId === 'all' ? 'active' : ''}" onclick="switchTeam('all')">ALL TEAMS</div>`;
   appData.teams.forEach(t => {
     tabHtml += `<div class="tab ${currentTeamId === t.id ? 'active' : ''}" onclick="switchTeam('${t.id}')">${escapeHtml(t.name)}</div>`;
@@ -834,6 +831,22 @@ function executeDeleteSale(id) {
     }, "Dropped financial index map reference entry.");
   };
   openModal("deleteConfirmModal");
+}
+
+function openGraphModal() {
+  if (isMutatingLock) return;
+  openModal("graphModal");
+  // Fires calculations immediately so canvas context isn't blank
+  renderGlobalChart();
+}
+
+function closeGraphModal() {
+  closeModal("graphModal");
+  // Clear trace to ensure fresh canvas instantiation when reopened
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
 }
 
 async function renderGlobalChart(){
