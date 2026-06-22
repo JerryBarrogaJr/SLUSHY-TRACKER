@@ -472,6 +472,8 @@ async function runWithGuard(actionFn, successMsg = null) {
   if (isMutatingLock) return;
   setGlobalDisabledStates(true);
   try {
+    // Clear any persistent notifications right as a new transaction kicks off
+    closeNotification();
     await actionFn();
     if (successMsg) showNotification(successMsg, "success");
   } catch (error) {
