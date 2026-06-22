@@ -361,7 +361,7 @@ details[open] .arrow{ transform:rotate(90deg) }
 const SUPABASE_URL = "https://bbydcdctqmqnszjmryke.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_HL65zJ25Dof7-zDitYoGkQ_EX7KLkoF";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const db = {
   async _simulateNetwork() {
@@ -375,9 +375,9 @@ const db = {
   
   async _getRaw() {
     const [teamsRes, membersRes, salesRes] = await Promise.all([
-      supabase.from('teams').select('*').order('name'),
-      supabase.from('members').select('*').order('name'),
-      supabase.from('sales').select('*').order('timestamp', { ascending: false })
+      supabaseClient.from('teams').select('*').order('name'),
+      supabaseClient.from('members').select('*').order('name'),
+      supabaseClient.from('sales').select('*').order('timestamp', { ascending: false })
     ]);
     
     if (teamsRes.error) throw teamsRes.error;
@@ -401,7 +401,7 @@ const db = {
     await this._simulateNetwork();
     let newTeam = { id: "team_" + Date.now(), name: name.trim() };
     
-    const { error } = await supabase.from('teams').insert([newTeam]);
+    const { error } = await supabaseClient.from('teams').insert([newTeam]);
     if (error) throw error;
     return newTeam;
   },
@@ -410,7 +410,7 @@ const db = {
     if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
     
-    const { error } = await supabase.from('teams').delete().eq('id', teamId);
+    const { error } = await supabaseClient.from('teams').delete().eq('id', teamId);
     if (error) throw error;
   },
 
@@ -419,7 +419,7 @@ const db = {
     await this._simulateNetwork();
     let newMember = { id: "mem_" + Date.now(), team_id: teamId, name: name.trim() };
     
-    const { error } = await supabase.from('members').insert([newMember]);
+    const { error } = await supabaseClient.from('members').insert([newMember]);
     if (error) throw error;
     return newMember;
   },
@@ -428,7 +428,7 @@ const db = {
     if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
     
-    const { error } = await supabase.from('members').delete().eq('id', memberId);
+    const { error } = await supabaseClient.from('members').delete().eq('id', memberId);
     if (error) throw error;
   },
 
@@ -444,14 +444,14 @@ const db = {
       saleData.id = "sale_" + Date.now();
     }
     
-    const { error } = await supabase.from('sales').upsert([saleData]);
+    const { error } = await supabaseClient.from('sales').upsert([saleData]);
     if (error) throw error;
     return saleData;
   },
 
   async deleteSale(saleId) {
     await this._simulateNetwork();
-    const { error } = await supabase.from('sales').delete().eq('id', saleId);
+    const { error } = await supabaseClient.from('sales').delete().eq('id', saleId);
     if (error) throw error;
   }
 };
