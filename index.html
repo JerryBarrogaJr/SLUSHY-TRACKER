@@ -7,6 +7,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- SUPABASE CDN BUNDLE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -74,7 +75,7 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 
 .actions{display:flex; gap:10px; flex-wrap:wrap; width: 100%;}
 
-.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; width: 100%; }
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; width: 100%; }
 .card{background: var(--bg-card); padding: 22px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 4px 30px rgba(0,0,0,0.12);}
 .card h4 { font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 500; letter-spacing: 0.5px;}
 .card h2 { font-size: 26px; font-weight: 600; color: var(--text-main); }
@@ -82,7 +83,7 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 #overall { color: var(--accent); }
 
 .filterBox { background: var(--bg-card); padding: 15px; border-radius: 14px; border: 1px solid var(--border); width: 100%; }
-.filter-controls-group { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; justify-content: flex-start; }
+.filter-controls-group { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; justify-content: flex-start; width: 100%; }
 .control-group { display: flex; flex-direction: column; gap: 6px; }
 .control-group label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
 select, input{ padding:10px 16px; background: var(--bg-input); color: var(--text-main); border-radius:10px; border:1px solid var(--border); font-family:inherit; outline:none; font-size: 13px; transition: all 0.2s; height: 40px; }
@@ -148,6 +149,10 @@ details[open] .arrow{ transform:rotate(90deg) }
 .form-group input, .form-group select { width: 100%; font-size: 13px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border); }
 
 .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+
+/* Goal section custom layout additions */
+.goal-input-container { display: flex; gap: 6px; align-items: center; }
+.goal-badge { font-size: 11px; background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: auto;}
 </style>
 </head>
 <body>
@@ -180,7 +185,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     <button id="addTeamBtn" class="btn" onclick="openAddTeamModal()">➕ Add Team</button>
     <button id="deleteTeamBtn" class="btn btn-danger" onclick="openDeleteTeamModal()">❌ Delete Current Team</button>
     <button id="exportCsvBtn" class="btn btn-secondary" onclick="exportCSV()">📥 Export CSV</button>
-    <button id="viewGraphBtn" class="btn btn-secondary" onclick="openGraphModal()">📈 View All-Team Graph</button>
+    <button id="viewGraphBtn" class="btn btn-secondary" onclick="openGraphModal()">📊 View All-Team Graph</button>
   </div>
 
   <div class="filterBox">
@@ -191,7 +196,7 @@ details[open] .arrow{ transform:rotate(90deg) }
           <option value="all">All Time</option>
           <option value="today">Today</option>
           <option value="yesterday">Yesterday</option>
-          <option value="month">This Month</option>
+          <option value="month" selected>This Month</option>
           <option value="range">Custom Range</option>
         </select>
       </div>
@@ -220,6 +225,14 @@ details[open] .arrow{ transform:rotate(90deg) }
           <option value="all">All Members</option>
         </select>
       </div>
+
+      <!-- IN-LINE FILTERS SECTION: MONTHLY GOAL MANAGER -->
+      <div class="control-group" style="margin-left: auto;">
+        <label style="display: flex; width: 100%;">Monthly Target Goal <span id="goalLockStatus" class="goal-badge">🔒 Locked</span></label>
+        <div class="goal-input-container">
+          <input type="number" id="monthlyGoalInput" placeholder="Enter Goal" style="width: 140px;" onchange="updateMonthlyGoalValue(this.value)" disabled>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -227,7 +240,8 @@ details[open] .arrow{ transform:rotate(90deg) }
     <div class="card"><h4>Selected Filter Total</h4><h2 id="teamTotal">$0.00</h2></div>
     <div class="card"><h4>Overall (All Time)</h4><h2 id="overall">$0.00</h2></div>
     <div class="card"><h4>Today</h4><h2 id="daily">$0.00</h2></div>
-    <div class="card"><h4>This Month</h4><h2 id="monthly">$0.00</h2></div>
+    <div class="card"><h4>This Month Target</h4><h2 id="monthlyGoalDisplay">$0.00</h2></div>
+    <div class="card" style="border-color: rgba(99, 102, 241, 0.25);"><h4>Goal Percentage Reached</h4><h2 id="goalPercentDisplay" style="color: var(--secondary);">0.0%</h2></div>
   </div>
 
   <div class="table-container">
@@ -339,7 +353,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     <div class="modal-header">
       <div>
         <h3 style="margin-bottom: 4px;">📊 Global Team Sales Performance</h3>
-        <p style="font-size: 13px; color: var(--text-muted);">Aggregated sales trends across all organizational teams.</p>
+        <p style="font-size: 13px; color: var(--text-muted);">Aggregated sales trends across all organizational teams. Referenced image verbatim: image_9c434b.png</p>
       </div>
       <span class="close" onclick="closeGraphModal()">&times;</span>
     </div>
@@ -347,7 +361,7 @@ details[open] .arrow{ transform:rotate(90deg) }
       <label style="font-size: 14px; font-weight: 500; margin-right: 8px; color: var(--text-muted);">Group By:</label>
       <select id="graphTimeframe" onchange="renderGlobalChart()">
         <option value="weekly">Weekly Intervals</option>
-        <option value="monthly">Monthly Intervals</option>
+        <option value="monthly" selected>Monthly Intervals</option>
       </select>
     </div>
     <div style="position: relative; width: 100%; height: 350px;"><canvas id="salesChart"></canvas></div>
@@ -356,34 +370,41 @@ details[open] .arrow{ transform:rotate(90deg) }
 
 <script>
 // ==========================================
-// 🛠️ SUPABASE CONFIGURATION LAYER (RENAME TO PREVENT CONFLICT)
+// 🛠️ SUPABASE CONFIGURATION LAYER
 // ==========================================
 const SUPABASE_URL = "https://bbydcdctqmqnszjmryke.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_HL65zJ25Dof7-zDitYoGkQ_EX7KLkoF";
 
-// Fixed variable assignment overlap conflict completely
 const trackerSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// State tracking for persistent configuration limits
+let dynamicMonthlyGoal = 5000; 
 
 const db = {
   async _simulateNetwork() {
     const bar = document.getElementById("globalNetworkBar");
-    bar.style.opacity = "1";
-    bar.style.width = "40%";
+    bar.style.opacity = "1"; bar.style.width = "40%";
     await new Promise(resolve => setTimeout(resolve, 60));
     bar.style.width = "100%";
     setTimeout(() => { bar.style.opacity = "0"; bar.style.width = "0%"; }, 150);
   },
   
   async _getRaw() {
-    const [teamsRes, membersRes, salesRes] = await Promise.all([
+    const [teamsRes, membersRes, salesRes, configRes] = await Promise.all([
       trackerSupabase.from('teams').select('*').order('name'),
       trackerSupabase.from('members').select('*').order('name'),
-      trackerSupabase.from('sales').select('*').order('timestamp', { ascending: false })
+      trackerSupabase.from('sales').select('*').order('timestamp', { ascending: false }),
+      trackerSupabase.from('app_config').select('*').eq('key', 'monthly_goal').maybeSingle()
     ]);
     
     if (teamsRes.error) throw teamsRes.error;
     if (membersRes.error) throw membersRes.error;
     if (salesRes.error) throw salesRes.error;
+
+    // Dynamically update runtime local configuration variables if table data exists
+    if (configRes.data && configRes.data.value) {
+      dynamicMonthlyGoal = parseFloat(configRes.data.value) || 5000;
+    }
 
     return {
       teams: teamsRes.data || [],
@@ -401,7 +422,6 @@ const db = {
     if (!name || name.trim().length === 0) throw new Error("Validation Error: Team name parameter missing.");
     await this._simulateNetwork();
     let newTeam = { id: "team_" + Date.now(), name: name.trim() };
-    
     const { error } = await trackerSupabase.from('teams').insert([newTeam]);
     if (error) throw error;
     return newTeam;
@@ -410,7 +430,6 @@ const db = {
   async deleteTeam(teamId) {
     if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
-    
     const { error } = await trackerSupabase.from('teams').delete().eq('id', teamId);
     if (error) throw error;
   },
@@ -419,7 +438,6 @@ const db = {
     if (!name || name.trim().length === 0) throw new Error("Validation Error: Profile string cannot be blank.");
     await this._simulateNetwork();
     let newMember = { id: "mem_" + Date.now(), team_id: teamId, name: name.trim() };
-    
     const { error } = await trackerSupabase.from('members').insert([newMember]);
     if (error) throw error;
     return newMember;
@@ -428,7 +446,6 @@ const db = {
   async deleteMember(memberId) {
     if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
-    
     const { error } = await trackerSupabase.from('members').delete().eq('id', memberId);
     if (error) throw error;
   },
@@ -440,10 +457,7 @@ const db = {
     
     await this._simulateNetwork();
     saleData.fan_name = saleData.fan_name.trim();
-    
-    if (!saleData.id) {
-      saleData.id = "sale_" + Date.now();
-    }
+    if (!saleData.id) saleData.id = "sale_" + Date.now();
     
     const { error } = await trackerSupabase.from('sales').upsert([saleData]);
     if (error) throw error;
@@ -457,7 +471,6 @@ const db = {
   }
 };
 
-const ADMIN_PASSWORD = "admin123"; 
 let isAdmin = false; 
 let currentTeamId = "all"; 
 let selectedMemberName = "all";
@@ -466,7 +479,6 @@ let isMutatingLock = false;
 
 let currentPage = 1;
 const rowsPerPage = 5; 
-
 let activeSaleContext = { teamId: null, memberId: null, saleId: null };
 
 async function runWithGuard(actionFn, successMsg = null) {
@@ -486,12 +498,12 @@ async function runWithGuard(actionFn, successMsg = null) {
 
 function setGlobalDisabledStates(disabled) {
   isMutatingLock = disabled;
-  const selectors = '.btn, .small, .btn-icon, select, input, .btn-submit, .close, .btn-pager';
-  const buttons = document.querySelectorAll(selectors);
-  buttons.forEach(b => {
+  const selectors = '.btn, .small, .btn-icon, select, #rangeStartDate, #rangeStartTime, #rangeEndDate, #rangeEndTime, .btn-submit, .close, .btn-pager';
+  document.querySelectorAll(selectors).forEach(b => {
     b.disabled = disabled;
     b.style.pointerEvents = disabled ? 'none' : 'auto';
   });
+  updateAdminOnlyControls();
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -532,8 +544,9 @@ function openAuthModal(showWarning = false) {
   document.getElementById("authPasscode").focus();
 }
 function closeAuthModal() { closeModal("authModal"); }
+
 function submitAdminAuth() {
-  if (document.getElementById("authPasscode").value === ADMIN_PASSWORD) {
+  if (document.getElementById("authPasscode").value === "admin123") {
     isAdmin = true; closeAuthModal(); showNotification("Cleared root access profile authorization.", "success"); updateAuthUI(); renderAll();
   } else { showNotification("Credentials rejected.", "error"); }
 }
@@ -541,6 +554,7 @@ function toggleAuth() {
   if (isAdmin) { isAdmin = false; showNotification("Cleared admin cache parameters.", "info"); updateAuthUI(); renderAll(); }
   else { openAuthModal(false); }
 }
+
 function updateAuthUI() {
   let display = document.getElementById("roleDisplay");
   let btn = document.getElementById("authBtn");
@@ -549,12 +563,55 @@ function updateAuthUI() {
   } else {
     display.innerText = "Standard User"; display.style.color = "var(--success)"; btn.innerText = "🔐 Admin Login"; btn.className = "btn-auth";
   }
+  updateAdminOnlyControls();
+}
+
+function updateAdminOnlyControls() {
+  const goalInput = document.getElementById('monthlyGoalInput');
+  const lockBadge = document.getElementById('goalLockStatus');
+  
+  if (isMutatingLock) {
+    goalInput.disabled = true;
+    return;
+  }
+  
+  if (isAdmin) {
+    goalInput.disabled = false;
+    lockBadge.innerText = "🔓 Editable";
+    lockBadge.style.background = "rgba(16, 185, 129, 0.15)";
+    lockBadge.style.color = "#34d399";
+  } else {
+    goalInput.disabled = true;
+    lockBadge.innerText = "🔒 Locked";
+    lockBadge.style.background = "rgba(99, 102, 241, 0.15)";
+    lockBadge.style.color = "#818cf8";
+  }
+}
+
+// Rewritten with async Supabase persistence workflow execution pipelines
+async function updateMonthlyGoalValue(val) {
+  let parsed = parseFloat(val);
+  if (isNaN(parsed) || parsed <= 0) {
+    showNotification("Please supply a valid numeric goal threshold.", "error");
+    document.getElementById('monthlyGoalInput').value = dynamicMonthlyGoal;
+    return;
+  }
+  
+  await runWithGuard(async () => {
+    const { error } = await trackerSupabase
+      .from('app_config')
+      .upsert([{ key: 'monthly_goal', value: String(parsed) }]);
+
+    if (error) throw error;
+    dynamicMonthlyGoal = parsed;
+    await renderAll();
+  }, "Target system-wide goal parameters updated permanently.");
 }
 
 function handleFilterTypeChange() {
   let type = document.getElementById("filterType").value;
   document.getElementById("customRangePicker").style.display = (type === "range") ? "flex" : "none";
-  if(type !== "range") { currentPage = 1; renderAll(); }
+  currentPage = 1; renderAll();
 }
 function setMemberFilter(v){ selectedMemberName = v; currentPage = 1; renderAll(); }
 
@@ -594,6 +651,9 @@ function changePage(direction) {
 async function renderAll() {
   let appData = await db._getRaw();
   
+  // Set the structural numeric control input value layout
+  document.getElementById('monthlyGoalInput').value = dynamicMonthlyGoal;
+
   let tabHtml = `<div class="tab ${currentTeamId === 'all' ? 'active' : ''}" onclick="switchTeam('all')">ALL TEAMS</div>`;
   appData.teams.forEach(t => {
     tabHtml += `<div class="tab ${currentTeamId === t.id ? 'active' : ''}" onclick="switchTeam('${t.id}')">${escapeHtml(t.name)}</div>`;
@@ -613,7 +673,7 @@ async function renderAll() {
   if([...uniqueNames, "all"].includes(savedSelVal)) { filterSelect.value = savedSelVal; selectedMemberName = savedSelVal; } 
   else { filterSelect.value = "all"; selectedMemberName = "all"; }
 
-  let teamTotal = 0, overallAllTime = 0, todayTotal = 0, monthTotal = 0;
+  let teamTotal = 0, overallAllTime = 0, todayTotal = 0, currentMonthSalesForGoal = 0;
   let now = new Date();
   let leaderboardMap = {};
 
@@ -621,7 +681,9 @@ async function renderAll() {
     let sDate = new Date(s.timestamp);
     overallAllTime += parseFloat(s.amount);
     if (sDate.toDateString() === now.toDateString()) todayTotal += parseFloat(s.amount);
-    if (sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear()) monthTotal += parseFloat(s.amount);
+    if (sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear()) {
+      currentMonthSalesForGoal += parseFloat(s.amount);
+    }
   });
 
   let displayMembersList = relevantMembers.filter(member => {
@@ -652,13 +714,11 @@ async function renderAll() {
 
     let salesRowsHtml = memberSales.map(s => {
       let dObj = new Date(s.timestamp);
-      let localizedDate = dObj.toISOString().split('T')[0];
-      let localizedTime = dObj.toTimeString().split(' ')[0].substring(0, 5);
       return `
         <div class="saleRow">
           <div>
             <div class="fan">👤 ${escapeHtml(s.fan_name)}</div>
-            <div class="date">${localizedDate} <span class="time-tag">⏰ ${localizedTime}</span></div>
+            <div class="date">${dObj.toISOString().split('T')[0]} <span class="time-tag">⏰ ${dObj.toTimeString().split(' ')[0].substring(0, 5)}</span></div>
           </div>
           <div class="saleRowRight">
             <div class="amount">$${parseFloat(s.amount).toFixed(2)}</div>
@@ -694,7 +754,11 @@ async function renderAll() {
   document.getElementById('teamTotal').innerText = '$' + teamTotal.toFixed(2);
   document.getElementById('overall').innerText = '$' + overallAllTime.toFixed(2);
   document.getElementById('daily').innerText = '$' + todayTotal.toFixed(2);
-  document.getElementById('monthly').innerText = '$' + monthTotal.toFixed(2);
+  
+  // Metric visual configurations summary updates
+  document.getElementById('monthlyGoalDisplay').innerText = '$' + dynamicMonthlyGoal.toFixed(2);
+  let finalPercentage = dynamicMonthlyGoal > 0 ? ((currentMonthSalesForGoal / dynamicMonthlyGoal) * 100) : 0;
+  document.getElementById('goalPercentDisplay').innerText = finalPercentage.toFixed(1) + '%';
 
   document.getElementById('paginationInfo').innerText = totalItems > 0 
     ? `Showing ${startIndex + 1}-${endIndex} of ${totalItems} members`
@@ -718,25 +782,16 @@ async function submitAddTeam() {
   let name = document.getElementById("newTeamInputName").value.trim();
   if(!name) return showNotification("Field cannot be empty.", "error");
   await runWithGuard(async () => {
-    let res = await db.addTeam(name);
-    currentTeamId = res.id;
-    closeModal("addTeamModal");
-    currentPage = 1;
-    await renderAll();
+    let res = await db.addTeam(name); currentTeamId = res.id; closeModal("addTeamModal"); currentPage = 1; await renderAll();
   }, `Successfully added "${name}" parameters.`);
 }
 
 function openDeleteTeamModal() {
   if (!isAdmin || currentTeamId === "all") return;
   document.getElementById("deleteConfirmText").innerText = "Warning: Destroying this entry drops associated linked profile users globally.";
-  let btn = document.getElementById("globalDeleteConfirmBtn");
-  btn.onclick = async () => {
+  document.getElementById("globalDeleteConfirmBtn").onclick = async () => {
     await runWithGuard(async () => {
-      await db.deleteTeam(currentTeamId);
-      currentTeamId = "all";
-      closeModal("deleteConfirmModal");
-      currentPage = 1;
-      await renderAll();
+      await db.deleteTeam(currentTeamId); currentTeamId = "all"; closeModal("deleteConfirmModal"); currentPage = 1; await renderAll();
     }, "Dropped structural branch directory array row.");
   };
   openModal("deleteConfirmModal");
@@ -751,9 +806,7 @@ async function submitAddMember() {
   let name = document.getElementById("newMemberInputName").value.trim();
   if(!name) return showNotification("Identity string required.", "error");
   await runWithGuard(async () => {
-    await db.addMember(currentTeamId, name);
-    closeModal("addMemberModal");
-    await renderAll();
+    await db.addMember(currentTeamId, name); closeModal("addMemberModal"); await renderAll();
   }, `Instantiated profile trace for ${name}.`);
 }
 
@@ -762,9 +815,7 @@ function executeDeleteMember(id) {
   document.getElementById("deleteConfirmText").innerText = "Purge target resource profile index?";
   document.getElementById("globalDeleteConfirmBtn").onclick = async () => {
     await runWithGuard(async () => {
-      await db.deleteMember(id);
-      closeModal("deleteConfirmModal");
-      await renderAll();
+      await db.deleteMember(id); closeModal("deleteConfirmModal"); await renderAll();
     }, "Purged database key dependencies.");
   };
   openModal("deleteConfirmModal");
@@ -783,9 +834,8 @@ async function openSaleModal(teamId, memberId, saleId = null) {
     if (target) {
       document.getElementById("saleFan").value = target.fan_name;
       document.getElementById("saleAmount").value = target.amount;
-      let parts = target.timestamp.split('T');
-      document.getElementById("saleDate").value = parts[0];
-      document.getElementById("saleTime").value = parts[1].substring(0, 5);
+      document.getElementById("saleDate").value = target.timestamp.split('T')[0];
+      document.getElementById("saleTime").value = target.timestamp.split('T')[1].substring(0, 5);
     }
   } else {
     document.getElementById("modalTitle").innerText = "💰 Record New Sale";
@@ -809,15 +859,9 @@ async function submitSaleEntry() {
   let isoTimestamp = `${dt}T${tm}:00`;
   await runWithGuard(async () => {
     await db.upsertSale({
-      id: activeSaleContext.saleId,
-      team_id: activeSaleContext.teamId,
-      member_id: activeSaleContext.memberId,
-      fan_name: fan,
-      amount: amt,
-      timestamp: isoTimestamp
+      id: activeSaleContext.saleId, team_id: activeSaleContext.teamId, member_id: activeSaleContext.memberId, fan_name: fan, amount: amt, timestamp: isoTimestamp
     });
-    closeSaleModal();
-    await renderAll();
+    closeSaleModal(); await renderAll();
   }, "Synchronized dynamic transaction ledger event mapping.");
 }
 
@@ -825,27 +869,14 @@ function executeDeleteSale(id) {
   document.getElementById("deleteConfirmText").innerText = "Drop record entry row?";
   document.getElementById("globalDeleteConfirmBtn").onclick = async () => {
     await runWithGuard(async () => {
-      await db.deleteSale(id);
-      closeModal("deleteConfirmModal");
-      await renderAll();
+      await db.deleteSale(id); closeModal("deleteConfirmModal"); await renderAll();
     }, "Dropped financial index map reference entry.");
   };
   openModal("deleteConfirmModal");
 }
 
-function openGraphModal() {
-  if (isMutatingLock) return;
-  openModal("graphModal");
-  renderGlobalChart();
-}
-
-function closeGraphModal() {
-  closeModal("graphModal");
-  if (chartInstance) {
-    chartInstance.destroy();
-    chartInstance = null;
-  }
-}
+function openGraphModal() { if (isMutatingLock) return; openModal("graphModal"); renderGlobalChart(); }
+function closeGraphModal() { closeModal("graphModal"); if (chartInstance) { chartInstance.destroy(); chartInstance = null; } }
 
 async function renderGlobalChart(){
   let appData = await db._getRaw();
@@ -872,69 +903,38 @@ async function renderGlobalChart(){
 
   if(chartInstance) chartInstance.destroy();
 
-  // Inline Custom Plugin to draw exact dollar amounts cleanly above each bar
   const topLabelsPlugin = {
     id: 'topLabelsPlugin',
     afterDatasetsDraw(chart) {
-      const { ctx, scales: { x, y } } = chart;
+      const { ctx } = chart;
       chart.data.datasets.forEach((dataset, index) => {
         const meta = chart.getDatasetMeta(index);
         meta.data.forEach((bar, i) => {
-          const val = dataset.data[i];
-          if (val === undefined || val === null) return;
+          const val = dataset.data[i]; if (val === undefined || val === null) return;
           const displayLabel = '$' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          
-          ctx.save();
-          ctx.fillStyle = '#e2e8f0'; // matches --text-main
-          ctx.font = 'bold 11px Poppins';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          // Draw title text 8px above the calculated top position coordinates of the bar asset
-          ctx.fillText(displayLabel, bar.x, bar.y - 8);
-          ctx.restore();
+          ctx.save(); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px Poppins'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          ctx.fillText(displayLabel, bar.x, bar.y - 8); ctx.restore();
         });
       });
     }
   };
 
   chartInstance = new Chart(document.getElementById('salesChart'), {
-    type: 'bar', // Updated type context to standard bar configuration layout
+    type: 'bar', 
     data: {
       labels: uiLabels,
-      datasets: [{ 
-        label: 'Global Revenue ($)', 
-        data: chartValues, 
-        backgroundColor: 'rgba(0, 235, 214, 0.35)', 
-        borderColor: '#00ebd6', 
-        borderWidth: 2,
-        borderRadius: 6,
-        hoverBackgroundColor: 'rgba(0, 235, 214, 0.65)'
-      }]
+      datasets: [{ label: 'Global Revenue ($)', data: chartValues, backgroundColor: 'rgba(0, 235, 214, 0.35)', borderColor: '#00ebd6', borderWidth: 2, borderRadius: 6 }]
     },
     options: {
-      responsive: true, 
-      maintainAspectRatio: false,
-      layout: {
-        padding: {
-          top: 25 // Adds context space over top boundary so high bars don't clip data labels
-        }
-      },
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 25 } },
       scales: {
-        y: { 
-          beginAtZero: true, 
-          grid: { color: 'rgba(255,255,255,0.03)' }, 
-          ticks: { color: '#94a3b8' } 
-        },
-        x: { 
-          grid: { display: false }, 
-          ticks: { color: '#94a3b8' } 
-        }
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94a3b8' } },
+        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
       },
-      plugins: { 
-        legend: { display: false } 
-      }
+      plugins: { legend: { display: false } }
     },
-    plugins: [topLabelsPlugin] // Registers the custom label layout drawing calculations hook engine
+    plugins: [topLabelsPlugin]
   });
 }
 
