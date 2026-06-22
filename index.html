@@ -80,7 +80,6 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 #teamTotal { color: var(--secondary); }
 #overall { color: var(--accent); }
 
-/* ALIGNED TO THE LEFT FILTERS GRAPHIC */
 .filterBox { background: var(--bg-card); padding: 15px; border-radius: 14px; border: 1px solid var(--border); width: 100%; }
 .filter-controls-group { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; justify-content: flex-start; }
 .control-group { display: flex; flex-direction: column; gap: 6px; }
@@ -107,8 +106,8 @@ tr:hover td { background: rgba(255,255,255,0.01); }
 .saleRow{ display:flex; justify-content:space-between; align-items:center; background: var(--bg-input); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:6px; font-size:13px; }
 .saleRowRight { display: flex; align-items: center; gap: 12px; }
 .saleActions { display: flex; gap: 6px; }
-.btn-icon { background: none; border: none; cursor: pointer; font-size: 13px; padding: 4px; border-radius: 6px; opacity: 0.6; transition: all 0.2s; }
-.btn-icon:hover { background: rgba(255,255,255,0.04); opacity: 1; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 13px; padding: 4px; border-radius: 6px; opacity: 0.6; transition: all 0.2s; position: relative; color: var(--text-muted); }
+.btn-icon:hover { background: rgba(255,255,255,0.04); opacity: 1; color: var(--text-main); }
 .btn-icon:disabled { opacity: 0.2; cursor: not-allowed; }
 .fan{font-weight:500; color: var(--text-main);}
 .date{font-size:11px; color: var(--text-muted); margin-top: 2px;}
@@ -256,7 +255,7 @@ details[open] .arrow{ transform:rotate(90deg) }
       <label for="authPasscode">Admin Passcode</label>
       <input type="password" id="authPasscode" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') submitAdminAuth()">
     </div>
-    <button class="btn-submit" onclick="submitAdminAuth()">Verify Access</button>
+    <button id="authVerifyBtn" class="btn-submit" onclick="submitAdminAuth()">Verify Access</button>
   </div>
 </div>
 
@@ -294,7 +293,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     </div>
     <p style="font-size: 14px; margin-bottom: 24px; color: var(--text-muted);" id="deleteConfirmText">Are you sure?</p>
     <div style="display:flex; gap:12px; justify-content: flex-end;">
-      <button class="btn btn-secondary" onclick="closeModal('deleteConfirmModal')">Cancel</button>
+      <button id="deleteCancelBtn" class="btn btn-secondary" onclick="closeModal('deleteConfirmModal')">Cancel</button>
       <button class="btn btn-danger" style="display: block;" id="globalDeleteConfirmBtn">Permanently Delete</button>
     </div>
   </div>
@@ -341,6 +340,9 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <script>
+/**
+ * ⚡ RELATIONAL DATA LAYER ARCHITECTURE WITH DATA VALIDATION HOOKS
+ */
 const SEED_DATA = {
   teams: [
     { id: "t1", name: "Team 1" }, { id: "t2", name: "Team 2" },
@@ -374,14 +376,17 @@ const db = {
     return await this._getRaw();
   },
   async addTeam(name) {
+    // Backend Emulated Validation Rule
+    if (!name || name.trim().length === 0) throw new Error("Validation Error: Team name parameter missing.");
     await this._simulateNetwork();
     let raw = await this._getRaw();
-    let newTeam = { id: "team_" + Date.now(), name };
+    let newTeam = { id: "team_" + Date.now(), name: name.trim() };
     raw.teams.push(newTeam);
     await this._saveRaw(raw);
     return newTeam;
   },
   async deleteTeam(teamId) {
+    if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
     let raw = await this._getRaw();
     raw.teams = raw.teams.filter(t => t.id !== teamId);
@@ -390,14 +395,16 @@ const db = {
     await this._saveRaw(raw);
   },
   async addMember(teamId, name) {
+    if (!name || name.trim().length === 0) throw new Error("Validation Error: Profile string cannot be blank.");
     await this._simulateNetwork();
     let raw = await this._getRaw();
-    let newMember = { id: "mem_" + Date.now(), team_id: teamId, name };
+    let newMember = { id: "mem_" + Date.now(), team_id: teamId, name: name.trim() };
     raw.members.push(newMember);
     await this._saveRaw(raw);
     return newMember;
   },
   async deleteMember(memberId) {
+    if (!isAdmin) throw new Error("Security Exception: Operation access profile unverified.");
     await this._simulateNetwork();
     let raw = await this._getRaw();
     raw.members = raw.members.filter(m => m.id !== memberId);
@@ -405,8 +412,15 @@ const db = {
     await this._saveRaw(raw);
   },
   async upsertSale(saleData) {
+    // Backend Emulated Constraints Enforcements
+    if (!saleData.fan_name || saleData.fan_name.trim().length === 0) throw new Error("Validation Failure: Fan name identity check failed.");
+    if (isNaN(saleData.amount) || saleData.amount <= 0) throw new Error("Validation Failure: Financial entity payload value constraint violated.");
+    if (isNaN(Date.parse(saleData.timestamp))) throw new Error("Validation Failure: Target event logging execution timeframe is malformed.");
+    
     await this._simulateNetwork();
     let raw = await this._getRaw();
+    saleData.fan_name = saleData.fan_name.trim();
+    
     if (saleData.id) {
       let idx = raw.sales.findIndex(s => s.id === saleData.id);
       if (idx !== -1) raw.sales[idx] = saleData;
@@ -442,7 +456,7 @@ async function runWithGuard(actionFn, successMsg = null) {
     if (successMsg) showNotification(successMsg, "success");
   } catch (error) {
     console.error("Database Transaction Exception:", error);
-    showNotification("Network Error: Data synchronization pipeline interrupted.", "error");
+    showNotification(error.message || "Network Error: Data synchronization pipeline interrupted.", "error");
   } finally {
     setGlobalDisabledStates(false);
   }
@@ -450,8 +464,16 @@ async function runWithGuard(actionFn, successMsg = null) {
 
 function setGlobalDisabledStates(disabled) {
   isMutatingLock = disabled;
-  const buttons = document.querySelectorAll('.btn, .small, .btn-icon, select, input');
-  buttons.forEach(b => b.disabled = disabled);
+  const selectors = '.btn, .small, .btn-icon, select, input, .btn-submit, .close';
+  const buttons = document.querySelectorAll(selectors);
+  buttons.forEach(b => {
+    b.disabled = disabled;
+    if (disabled) {
+      b.style.pointerEvents = 'none';
+    } else {
+      b.style.pointerEvents = 'auto';
+    }
+  });
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -482,8 +504,8 @@ function showNotification(msg, type = "info") {
   if(type !== "error") { setTimeout(closeNotification, 4000); }
 }
 function closeNotification() { document.getElementById("appNotification").style.display = "none"; }
-function openModal(id) { document.getElementById(id).style.display = "flex"; }
-function closeModal(id) { document.getElementById(id).style.display = "none"; }
+function openModal(id) { if (!isMutatingLock) document.getElementById(id).style.display = "flex"; }
+function closeModal(id) { if (!isMutatingLock) document.getElementById(id).style.display = "none"; }
 function escapeHtml(str) { return !str ? '' : String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function openAuthModal(showWarning = false) {
@@ -645,7 +667,7 @@ async function renderAll() {
   ).join('') || '<p style="color: var(--text-muted); padding: 5px;">No operational timeline metrics captured.</p>';
 }
 
-function switchTeam(id) { currentTeamId = id; selectedMemberName = "all"; renderAll(); }
+function switchTeam(id) { if (!isMutatingLock) { currentTeamId = id; selectedMemberName = "all"; renderAll(); } }
 
 function openAddTeamModal() { if (!isAdmin) { openAuthModal(true); return; } document.getElementById("newTeamInputName").value = ""; openModal("addTeamModal"); }
 async function submitAddTeam() {
@@ -704,6 +726,7 @@ function executeDeleteMember(id) {
 }
 
 async function openSaleModal(teamId, memberId, saleId = null) {
+  if (isMutatingLock) return;
   activeSaleContext = { teamId, memberId, saleId };
   let appData = await db._getRaw();
   let mObj = appData.members.find(m => m.id === memberId);
