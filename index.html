@@ -65,7 +65,7 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 .btn:disabled { opacity: 0.5; cursor: not-allowed !important; }
 #addMemberBtn, #addTeamBtn, #addModelBtn { border-color: rgba(0, 235, 214, 0.2); color: var(--secondary); }
 #addMemberBtn:hover, #addTeamBtn:hover, #addModelBtn:hover { background: rgba(0, 235, 214, 0.05); }
-#addModelBtn { display: none; } /* Admin only button toggle */
+#addModelBtn { display: none; }
 .btn-secondary { background: var(--bg-input); color: var(--text-muted); }
 .btn-secondary:hover { color: var(--text-main); border-color: var(--text-muted); }
 .btn-danger { background: rgba(239, 68, 68, 0.08); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); display: none; }
@@ -75,12 +75,14 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 
 .actions{display:flex; gap:10px; flex-wrap:wrap; width: 100%;}
 
+/* Balanced Grid Optimization */
 .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; width: 100%; }
 .card{background: var(--bg-card); padding: 22px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 4px 30px rgba(0,0,0,0.12);}
 .card h4 { font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 500; letter-spacing: 0.5px;}
 .card h2 { font-size: 26px; font-weight: 600; color: var(--text-main); }
 #teamTotal { color: var(--secondary); }
 #overall { color: var(--accent); }
+.full-span-card { grid-column: 1 / -1; border-color: rgba(99, 102, 241, 0.2); background: linear-gradient(to right, var(--bg-card), rgba(99, 102, 241, 0.03)); }
 
 .filterBox { background: var(--bg-card); padding: 15px; border-radius: 14px; border: 1px solid var(--border); width: 100%; }
 .filter-controls-group { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; justify-content: flex-start; width: 100%; }
@@ -89,7 +91,7 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 select, input{ padding:10px 16px; background: var(--bg-input); color: var(--text-main); border-radius:10px; border:1px solid var(--border); font-family:inherit; outline:none; font-size: 13px; transition: all 0.2s; height: 40px; width: 100%; }
 select:focus, input:focus { border-color: var(--secondary); }
 
-.custom-range-picker { display: none; gap: 12px; align-items: flex-end; border-left: 2px solid var(--border); border-right: 2px solid var(--border); padding: 0 16px; }
+.custom-range-picker { display: none; gap: 12px; align-items: flex-end; border-left: 2px solid var(--border); border-right: 2px solid var(--border); padding: 0 16px; flex-wrap: wrap; }
 
 .table-container { width: 100%; background: var(--bg-card); border-radius:14px; overflow:hidden; border: 1px solid var(--border); }
 table{ width:100%; border-collapse:collapse; }
@@ -112,7 +114,7 @@ tr:hover td { background: rgba(255,255,255,0.01); }
 .red{ background: rgba(239, 68, 68, 0.08); color: #f87171; border-color: rgba(239, 68, 68, 0.15); }
 .red:hover:not(:disabled){ background: var(--danger); color: white; }
 
-.saleRow{ display:flex; justify-content:space-between; align-items:center; background: var(--bg-input); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:6px; font-size:13px; }
+.saleRow{ display:flex; justify-content:space-between; align-items:center; background: var(--bg-main); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:6px; font-size:13px; }
 .saleRowRight { display: flex; align-items: center; gap: 12px; }
 .saleActions { display: flex; gap: 6px; }
 .btn-icon { background: none; border: none; cursor: pointer; font-size: 13px; padding: 4px; border-radius: 6px; opacity: 0.6; transition: all 0.2s; position: relative; color: var(--text-muted); }
@@ -151,7 +153,6 @@ details[open] .arrow{ transform:rotate(90deg) }
 
 .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
 
-/* Goal section custom layout additions */
 .goal-input-container { display: flex; gap: 6px; align-items: center; }
 .goal-badge { font-size: 11px; background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: auto;}
 </style>
@@ -243,7 +244,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     <div class="card"><h4>Overall (All Time)</h4><h2 id="overall">$0.00</h2></div>
     <div class="card"><h4>Today</h4><h2 id="daily">$0.00</h2></div>
     <div class="card"><h4>This Month Target</h4><h2 id="monthlyGoalDisplay">$0.00</h2></div>
-    <div class="card" style="border-color: rgba(99, 102, 241, 0.25);"><h4>Goal Percentage Reached</h4><h2 id="goalPercentDisplay" style="color: var(--secondary);">0.0%</h2></div>
+    <div class="card full-span-card"><h4>Goal Percentage Reached</h4><h2 id="goalPercentDisplay" style="color: var(--secondary);">0.0%</h2></div>
   </div>
 
   <div class="table-container">
@@ -390,15 +391,15 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <div id="modelGraphModal" class="modal">
-  <div class="modal-content" style="max-width: 750px;">
+  <div class="modal-content" style="max-width: 600px;">
     <div class="modal-header">
       <div>
-        <h3 style="margin-bottom: 4px;">📊 Model Revenue Distribution</h3>
-        <p style="font-size: 13px; color: var(--text-muted);">Comparative financial breakdown calculated by assigned model metadata.</p>
+        <h3 style="margin-bottom: 4px;">📊 Model Revenue Share</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Comparative financial share calculated by assigned model tags (Respects filters).</p>
       </div>
       <span class="close" onclick="closeModelGraphModal()">&times;</span>
     </div>
-    <div style="position: relative; width: 100%; height: 380px;"><canvas id="modelSalesChart"></canvas></div>
+    <div style="position: relative; width: 100%; height: 340px;"><canvas id="modelSalesChart"></canvas></div>
   </div>
 </div>
 
@@ -411,7 +412,6 @@ const SUPABASE_ANON_KEY = "sb_publishable_HL65zJ25Dof7-zDitYoGkQ_EX7KLkoF";
 
 const trackerSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// State tracking for persistent configuration limits
 let dynamicMonthlyGoal = 5000; 
 
 const db = {
@@ -949,15 +949,14 @@ function executeDeleteSale(id) {
 function openGraphModal() { if (isMutatingLock) return; openModal("graphModal"); renderGlobalChart(); }
 function closeGraphModal() { closeModal("graphModal"); if (chartInstance) { chartInstance.destroy(); chartInstance = null; } }
 
-// NEW MODEL METRIC PLOTTING HANDLERS
 function openModelGraphModal() { if (isMutatingLock) return; openModal("modelGraphModal"); renderModelChart(); }
 function closeModelGraphModal() { closeModal("modelGraphModal"); if (modelChartInstance) { modelChartInstance.destroy(); modelChartInstance = null; } }
 
+// UPGRADED MODEL METRIC DISTRIBUTION CHART (DOUGHNUT ARCHITECTURE)
 async function renderModelChart() {
   let appData = await db._getRaw();
   let modelDataPoints = {};
 
-  // Aggregate values by model tags directly based on current filtered views or raw totals
   appData.sales.forEach(sale => {
     if (!matchTimeframeFilter(sale.timestamp)) return;
     let nameKey = sale.model_name || "Unassigned Model";
@@ -969,38 +968,49 @@ async function renderModelChart() {
 
   if(modelChartInstance) modelChartInstance.destroy();
 
-  const chartLabelsPlugin = {
-    id: 'chartLabelsPlugin',
-    afterDatasetsDraw(chart) {
-      const { ctx } = chart;
-      chart.data.datasets.forEach((dataset, index) => {
-        const meta = chart.getDatasetMeta(index);
-        meta.data.forEach((bar, i) => {
-          const val = dataset.data[i]; if (val === undefined || val === null) return;
-          const labelStr = '$' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          ctx.save(); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px Poppins'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-          ctx.fillText(labelStr, bar.x, bar.y - 8); ctx.restore();
-        });
-      });
-    }
-  };
+  // Vibrant color array generation for distinct model slices
+  const backgroundColors = [
+    'rgba(139, 92, 246, 0.6)',
+    'rgba(0, 235, 214, 0.6)',
+    'rgba(99, 102, 241, 0.6)',
+    'rgba(16, 185, 129, 0.6)',
+    'rgba(239, 68, 68, 0.6)',
+    'rgba(245, 158, 11, 0.6)'
+  ];
+  const borderColors = ['#8b5cf6', '#00ebd6', '#6366f1', '#10b981', '#ef4444', '#f59e0b'];
 
   modelChartInstance = new Chart(document.getElementById('modelSalesChart'), {
-    type: 'bar',
+    type: 'doughnut',
     data: {
       labels: sortedModels,
-      datasets: [{ label: 'Revenue by Model ($)', data: chartValues, backgroundColor: 'rgba(139, 92, 246, 0.35)', borderColor: '#8b5cf6', borderWidth: 2, borderRadius: 6 }]
+      datasets: [{
+        label: 'Revenue Shares',
+        data: chartValues,
+        backgroundColor: backgroundColors.slice(0, sortedModels.length),
+        borderColor: borderColors.slice(0, sortedModels.length),
+        borderWidth: 2
+      }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 25 } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94a3b8' } },
-        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
-      },
-      plugins: { legend: { display: false } }
-    },
-    plugins: [chartLabelsPlugin]
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: '#e2e8f0', font: { family: 'Poppins', size: 12 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              let label = context.label || '';
+              if (label) label += ': ';
+              if (context.parsed !== null) label += '$' + context.parsed.toFixed(2);
+              return label;
+            }
+          }
+        }
+      }
+    }
   });
 }
 
