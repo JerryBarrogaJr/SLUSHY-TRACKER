@@ -152,26 +152,24 @@ details[open] .arrow{ transform:rotate(90deg) }
 
 .leaderboard-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
 
-.goal-input-container { display: flex; gap: 6px; align-items: center; }
 .goal-badge { font-size: 11px; background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: auto;}
+.goal-input-container { display: flex; gap: 6px; align-items: center; }
 
-/* UPGRADED FIXED BOX SCROLLABLE FAN STYLES */
+/* FIXED BOX SCROLLABLE FAN STYLES */
 .fan-filter-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 12px; }
 .fan-custom-range { display: none; gap: 8px; align-items: center; }
 .fan-custom-range input { height: 36px; padding: 6px 12px; width: 125px; font-size: 12px; }
 
-/* The layout lock sector so the box never expands vertically */
 .fan-scroll-viewport {
   max-height: 400px; 
   overflow-y: auto; 
   width: 100%;
 }
-/* Sticky headers so they stay fixed on top while scrolling through fans */
 .fan-scroll-viewport th {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #1c2538; /* Solid overlay color matching your panel palette */
+  background: #1c2538; 
   box-shadow: inset 0 -1px 0 var(--border);
 }
 </style>
@@ -351,7 +349,7 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <div id="addTeamModal" class="modal">
-  <div class="modal-content" style="max-width: 400px;">
+  <div class="modal-content" style="max-width: 420px;">
     <div class="modal-header">
       <h3>➕ Create New Team</h3>
       <span class="close" onclick="closeModal('addTeamModal')">&times;</span>
@@ -364,7 +362,7 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <div id="addMemberModal" class="modal">
-  <div class="modal-content" style="max-width: 400px;">
+  <div class="modal-content" style="max-width: 420px;">
     <div class="modal-header">
       <h3>👤 Add Team Member</h3>
       <span class="close" onclick="closeModal('addMemberModal')">&times;</span>
@@ -377,7 +375,7 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <div id="addModelModal" class="modal">
-  <div class="modal-content" style="max-width: 400px;">
+  <div class="modal-content" style="max-width: 420px;">
     <div class="modal-header">
       <h3>🎭 Add New Model Name</h3>
       <span class="close" onclick="closeModal('addModelModal')">&times;</span>
@@ -413,7 +411,7 @@ details[open] .arrow{ transform:rotate(90deg) }
       <span class="close" onclick="closeSaleModal()">&times;</span>
     </div>
     <div class="form-group">
-      <label for="saleModelSelect">Model Name Name</label>
+      <label for="saleModelSelect">Model Name</label>
       <select id="saleModelSelect">
         <option value="">-- Choose Valid Model --</option>
       </select>
@@ -1016,6 +1014,7 @@ function executeDeleteMember(id) {
   openModal("deleteConfirmModal");
 }
 
+/* UPGRADED OPEN SALE MODAL WITH LOCAL TIMEZONE AUTO-POPULATE */
 async function openSaleModal(teamId, memberId, saleId = null) {
   if (isMutatingLock) return;
   activeSaleContext = { teamId, memberId, saleId };
@@ -1036,10 +1035,16 @@ async function openSaleModal(teamId, memberId, saleId = null) {
   } else {
     document.getElementById("modalTitle").innerText = "💰 Record New Sale";
     document.getElementById("saleModelSelect").value = "";
-    document.getElementById("saleFan").value = ""; document.getElementById("saleAmount").value = "";
-    let now = new Date();
-    document.getElementById("saleDate").value = now.toISOString().split('T')[0];
-    document.getElementById("saleTime").value = now.toTimeString().split(' ')[0].substring(0,5);
+    document.getElementById("saleFan").value = ""; 
+    document.getElementById("saleAmount").value = "";
+    
+    // Auto-populate inputs matching the local browser timezone context
+    const now = new Date();
+    const localDate = now.toLocaleDateString('sv-SE'); 
+    const localTime = now.toTimeString().split(' ')[0].substring(0, 5); 
+    
+    document.getElementById("saleDate").value = localDate;
+    document.getElementById("saleTime").value = localTime;
   }
   openModal("saleModal");
 }
