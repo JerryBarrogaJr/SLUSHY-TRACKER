@@ -188,6 +188,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     <button id="deleteTeamBtn" class="btn btn-danger" onclick="openDeleteTeamModal()">❌ Delete Current Team</button>
     <button id="exportCsvBtn" class="btn btn-secondary" onclick="exportCSV()">📥 Export CSV</button>
     <button id="viewGraphBtn" class="btn btn-secondary" onclick="openGraphModal()">📊 View All-Team Graph</button>
+    <button id="viewModelGraphBtn" class="btn btn-secondary" onclick="openModelGraphModal()">📊 View Model Performance Chart</button>
   </div>
 
   <div class="filterBox">
@@ -373,7 +374,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     <div class="modal-header">
       <div>
         <h3 style="margin-bottom: 4px;">📊 Global Team Sales Performance</h3>
-        <p style="font-size: 13px; color: var(--text-muted);">Aggregated sales trends across all organizational teams. Referenced image verbatim: image_9c434b.png</p>
+        <p style="font-size: 13px; color: var(--text-muted);">Aggregated sales trends across all organizational teams.</p>
       </div>
       <span class="close" onclick="closeGraphModal()">&times;</span>
     </div>
@@ -385,6 +386,19 @@ details[open] .arrow{ transform:rotate(90deg) }
       </select>
     </div>
     <div style="position: relative; width: 100%; height: 350px;"><canvas id="salesChart"></canvas></div>
+  </div>
+</div>
+
+<div id="modelGraphModal" class="modal">
+  <div class="modal-content" style="max-width: 750px;">
+    <div class="modal-header">
+      <div>
+        <h3 style="margin-bottom: 4px;">📊 Model Revenue Distribution</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Comparative financial breakdown calculated by assigned model metadata.</p>
+      </div>
+      <span class="close" onclick="closeModelGraphModal()">&times;</span>
+    </div>
+    <div style="position: relative; width: 100%; height: 380px;"><canvas id="modelSalesChart"></canvas></div>
   </div>
 </div>
 
@@ -508,6 +522,7 @@ let isAdmin = false;
 let currentTeamId = "all"; 
 let selectedMemberName = "all";
 let chartInstance = null;
+let modelChartInstance = null;
 let isMutatingLock = false;
 
 let currentPage = 1;
@@ -707,7 +722,6 @@ async function renderAll() {
   if([...uniqueNames, "all"].includes(savedSelVal)) { filterSelect.value = savedSelVal; selectedMemberName = savedSelVal; } 
   else { filterSelect.value = "all"; selectedMemberName = "all"; }
 
-  // Populate model select fields inside the sale modal context safely
   let modelSelect = document.getElementById("saleModelSelect");
   modelSelect.innerHTML = `<option value="">-- Choose Valid Model --</option>`;
   appData.models.forEach(m => {
@@ -934,6 +948,61 @@ function executeDeleteSale(id) {
 
 function openGraphModal() { if (isMutatingLock) return; openModal("graphModal"); renderGlobalChart(); }
 function closeGraphModal() { closeModal("graphModal"); if (chartInstance) { chartInstance.destroy(); chartInstance = null; } }
+
+// NEW MODEL METRIC PLOTTING HANDLERS
+function openModelGraphModal() { if (isMutatingLock) return; openModal("modelGraphModal"); renderModelChart(); }
+function closeModelGraphModal() { closeModal("modelGraphModal"); if (modelChartInstance) { modelChartInstance.destroy(); modelChartInstance = null; } }
+
+async function renderModelChart() {
+  let appData = await db._getRaw();
+  let modelDataPoints = {};
+
+  // Aggregate values by model tags directly based on current filtered views or raw totals
+  appData.sales.forEach(sale => {
+    if (!matchTimeframeFilter(sale.timestamp)) return;
+    let nameKey = sale.model_name || "Unassigned Model";
+    modelDataPoints[nameKey] = (modelDataPoints[nameKey] || 0) + parseFloat(sale.amount);
+  });
+
+  let sortedModels = Object.keys(modelDataPoints).sort((a, b) => modelDataPoints[b] - modelDataPoints[a]);
+  let chartValues = sortedModels.map(m => modelDataPoints[m]);
+
+  if(modelChartInstance) modelChartInstance.destroy();
+
+  const chartLabelsPlugin = {
+    id: 'chartLabelsPlugin',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, index) => {
+        const meta = chart.getDatasetMeta(index);
+        meta.data.forEach((bar, i) => {
+          const val = dataset.data[i]; if (val === undefined || val === null) return;
+          const labelStr = '$' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          ctx.save(); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px Poppins'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          ctx.fillText(labelStr, bar.x, bar.y - 8); ctx.restore();
+        });
+      });
+    }
+  };
+
+  modelChartInstance = new Chart(document.getElementById('modelSalesChart'), {
+    type: 'bar',
+    data: {
+      labels: sortedModels,
+      datasets: [{ label: 'Revenue by Model ($)', data: chartValues, backgroundColor: 'rgba(139, 92, 246, 0.35)', borderColor: '#8b5cf6', borderWidth: 2, borderRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 25 } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94a3b8' } },
+        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+      },
+      plugins: { legend: { display: false } }
+    },
+    plugins: [chartLabelsPlugin]
+  });
+}
 
 async function renderGlobalChart(){
   let appData = await db._getRaw();
