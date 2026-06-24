@@ -7,7 +7,6 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- SUPABASE CDN BUNDLE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -64,8 +63,9 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 .btn { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); padding: 11px 18px; border-radius: 12px; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; position: relative; }
 .btn:hover { background: var(--bg-input); border-color: var(--text-muted); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed !important; }
-#addMemberBtn, #addTeamBtn { border-color: rgba(0, 235, 214, 0.2); color: var(--secondary); }
-#addMemberBtn:hover, #addTeamBtn:hover { background: rgba(0, 235, 214, 0.05); }
+#addMemberBtn, #addTeamBtn, #addModelBtn { border-color: rgba(0, 235, 214, 0.2); color: var(--secondary); }
+#addMemberBtn:hover, #addTeamBtn:hover, #addModelBtn:hover { background: rgba(0, 235, 214, 0.05); }
+#addModelBtn { display: none; } /* Admin only button toggle */
 .btn-secondary { background: var(--bg-input); color: var(--text-muted); }
 .btn-secondary:hover { color: var(--text-main); border-color: var(--text-muted); }
 .btn-danger { background: rgba(239, 68, 68, 0.08); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); display: none; }
@@ -86,7 +86,7 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 .filter-controls-group { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; justify-content: flex-start; width: 100%; }
 .control-group { display: flex; flex-direction: column; gap: 6px; }
 .control-group label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
-select, input{ padding:10px 16px; background: var(--bg-input); color: var(--text-main); border-radius:10px; border:1px solid var(--border); font-family:inherit; outline:none; font-size: 13px; transition: all 0.2s; height: 40px; }
+select, input{ padding:10px 16px; background: var(--bg-input); color: var(--text-main); border-radius:10px; border:1px solid var(--border); font-family:inherit; outline:none; font-size: 13px; transition: all 0.2s; height: 40px; width: 100%; }
 select:focus, input:focus { border-color: var(--secondary); }
 
 .custom-range-picker { display: none; gap: 12px; align-items: flex-end; border-left: 2px solid var(--border); border-right: 2px solid var(--border); padding: 0 16px; }
@@ -119,6 +119,7 @@ tr:hover td { background: rgba(255,255,255,0.01); }
 .btn-icon:hover { background: rgba(255,255,255,0.04); opacity: 1; color: var(--text-main); }
 .btn-icon:disabled { opacity: 0.2; cursor: not-allowed; }
 .fan{font-weight:500; color: var(--text-main);}
+.model-tag{font-size:11px; background: rgba(139, 92, 246, 0.15); color: #a78bfa; padding: 2px 6px; border-radius: 4px; font-weight: 500; margin-left: 6px;}
 .date{font-size:11px; color: var(--text-muted); margin-top: 2px;}
 .time-tag{font-size:11px; font-weight:500; color: var(--primary); margin-left: 6px;}
 .amount{font-weight:600; color: var(--success);}
@@ -183,6 +184,7 @@ details[open] .arrow{ transform:rotate(90deg) }
   <div class="actions">
     <button id="addMemberBtn" class="btn" onclick="openAddMemberModal()">➕ Add Member</button>
     <button id="addTeamBtn" class="btn" onclick="openAddTeamModal()">➕ Add Team</button>
+    <button id="addModelBtn" class="btn" onclick="openAddModelModal()">➕ Add Model Name</button>
     <button id="deleteTeamBtn" class="btn btn-danger" onclick="openDeleteTeamModal()">❌ Delete Current Team</button>
     <button id="exportCsvBtn" class="btn btn-secondary" onclick="exportCSV()">📥 Export CSV</button>
     <button id="viewGraphBtn" class="btn btn-secondary" onclick="openGraphModal()">📊 View All-Team Graph</button>
@@ -192,7 +194,7 @@ details[open] .arrow{ transform:rotate(90deg) }
     <div class="filter-controls-group">
       <div class="control-group">
         <label>Timeframe Preset</label>
-        <select id="filterType" onchange="handleFilterTypeChange()">
+        <select id="filterType" onchange="handleFilterTypeChange()" style="width: 140px;">
           <option value="all">All Time</option>
           <option value="today">Today</option>
           <option value="yesterday">Yesterday</option>
@@ -221,12 +223,11 @@ details[open] .arrow{ transform:rotate(90deg) }
 
       <div class="control-group">
         <label>Filter by Member</label>
-        <select id="memberFilter" onchange="setMemberFilter(this.value)">
+        <select id="memberFilter" onchange="setMemberFilter(this.value)" style="width: 160px;">
           <option value="all">All Members</option>
         </select>
       </div>
 
-      <!-- IN-LINE FILTERS SECTION: MONTHLY GOAL MANAGER -->
       <div class="control-group" style="margin-left: auto;">
         <label style="display: flex; width: 100%;">Monthly Target Goal <span id="goalLockStatus" class="goal-badge">🔒 Locked</span></label>
         <div class="goal-input-container">
@@ -314,6 +315,19 @@ details[open] .arrow{ transform:rotate(90deg) }
   </div>
 </div>
 
+<div id="addModelModal" class="modal">
+  <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3>🎭 Add New Model Name</h3>
+      <span class="close" onclick="closeModal('addModelModal')">&times;</span>
+    </div>
+    <div class="prompt-group">
+      <input type="text" id="newModelInputName" placeholder="e.g., Model V2">
+      <button id="newModelSubmitBtn" class="btn btn-submit" onclick="submitAddModel()">Save Model</button>
+    </div>
+  </div>
+</div>
+
 <div id="deleteConfirmModal" class="modal">
   <div class="modal-content" style="max-width: 420px;">
     <div class="modal-header">
@@ -336,6 +350,12 @@ details[open] .arrow{ transform:rotate(90deg) }
         <p style="font-size: 13px; color: var(--text-muted);">Logging entry for: <span id="targetMemberDisplay" style="font-weight: 600; color: var(--secondary);"></span></p>
       </div>
       <span class="close" onclick="closeSaleModal()">&times;</span>
+    </div>
+    <div class="form-group">
+      <label for="saleModelSelect">Model Name Name</label>
+      <select id="saleModelSelect">
+        <option value="">-- Choose Valid Model --</option>
+      </select>
     </div>
     <div class="form-group"><label for="saleFan">Client / Fan Name</label><input type="text" id="saleFan" placeholder="e.g. John Doe"></div>
     <div class="form-group"><label for="saleAmount">Sale Amount ($)</label><input type="number" id="saleAmount" step="0.01" min="0.01" placeholder="0.00"></div>
@@ -390,18 +410,19 @@ const db = {
   },
   
   async _getRaw() {
-    const [teamsRes, membersRes, salesRes, configRes] = await Promise.all([
+    const [teamsRes, membersRes, salesRes, configRes, modelsRes] = await Promise.all([
       trackerSupabase.from('teams').select('*').order('name'),
       trackerSupabase.from('members').select('*').order('name'),
       trackerSupabase.from('sales').select('*').order('timestamp', { ascending: false }),
-      trackerSupabase.from('app_config').select('*').eq('key', 'monthly_goal').maybeSingle()
+      trackerSupabase.from('app_config').select('*').eq('key', 'monthly_goal').maybeSingle(),
+      trackerSupabase.from('models').select('*').order('name')
     ]);
     
     if (teamsRes.error) throw teamsRes.error;
     if (membersRes.error) throw membersRes.error;
     if (salesRes.error) throw salesRes.error;
+    if (modelsRes.error) throw modelsRes.error;
 
-    // Dynamically update runtime local configuration variables if table data exists
     if (configRes.data && configRes.data.value) {
       dynamicMonthlyGoal = parseFloat(configRes.data.value) || 5000;
     }
@@ -409,7 +430,8 @@ const db = {
     return {
       teams: teamsRes.data || [],
       members: membersRes.data || [],
-      sales: salesRes.data || []
+      sales: salesRes.data || [],
+      models: modelsRes.data || []
     };
   },
 
@@ -450,7 +472,18 @@ const db = {
     if (error) throw error;
   },
 
+  async addModel(name) {
+    if (!isAdmin) throw new Error("Security Exception: Access violation encountered.");
+    if (!name || name.trim().length === 0) throw new Error("Validation Error: Blank model tags are invalid.");
+    await this._simulateNetwork();
+    let newModel = { id: "model_" + Date.now(), name: name.trim() };
+    const { error } = await trackerSupabase.from('models').insert([newModel]);
+    if (error) throw error;
+    return newModel;
+  },
+
   async upsertSale(saleData) {
+    if (!saleData.model_name) throw new Error("Validation Failure: Selecting an assigned model option is mandatory.");
     if (!saleData.fan_name || saleData.fan_name.trim().length === 0) throw new Error("Validation Failure: Fan name identity check failed.");
     if (isNaN(saleData.amount) || saleData.amount <= 0) throw new Error("Validation Failure: Financial entity payload value constraint violated.");
     if (isNaN(Date.parse(saleData.timestamp))) throw new Error("Validation Failure: Target event logging execution timeframe is malformed.");
@@ -569,6 +602,7 @@ function updateAuthUI() {
 function updateAdminOnlyControls() {
   const goalInput = document.getElementById('monthlyGoalInput');
   const lockBadge = document.getElementById('goalLockStatus');
+  const addModelBtn = document.getElementById('addModelBtn');
   
   if (isMutatingLock) {
     goalInput.disabled = true;
@@ -580,15 +614,16 @@ function updateAdminOnlyControls() {
     lockBadge.innerText = "🔓 Editable";
     lockBadge.style.background = "rgba(16, 185, 129, 0.15)";
     lockBadge.style.color = "#34d399";
+    addModelBtn.style.display = "inline-flex";
   } else {
     goalInput.disabled = true;
     lockBadge.innerText = "🔒 Locked";
     lockBadge.style.background = "rgba(99, 102, 241, 0.15)";
     lockBadge.style.color = "#818cf8";
+    addModelBtn.style.display = "none";
   }
 }
 
-// Rewritten with async Supabase persistence workflow execution pipelines
 async function updateMonthlyGoalValue(val) {
   let parsed = parseFloat(val);
   if (isNaN(parsed) || parsed <= 0) {
@@ -651,7 +686,6 @@ function changePage(direction) {
 async function renderAll() {
   let appData = await db._getRaw();
   
-  // Set the structural numeric control input value layout
   document.getElementById('monthlyGoalInput').value = dynamicMonthlyGoal;
 
   let tabHtml = `<div class="tab ${currentTeamId === 'all' ? 'active' : ''}" onclick="switchTeam('all')">ALL TEAMS</div>`;
@@ -672,6 +706,13 @@ async function renderAll() {
   });
   if([...uniqueNames, "all"].includes(savedSelVal)) { filterSelect.value = savedSelVal; selectedMemberName = savedSelVal; } 
   else { filterSelect.value = "all"; selectedMemberName = "all"; }
+
+  // Populate model select fields inside the sale modal context safely
+  let modelSelect = document.getElementById("saleModelSelect");
+  modelSelect.innerHTML = `<option value="">-- Choose Valid Model --</option>`;
+  appData.models.forEach(m => {
+    modelSelect.innerHTML += `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`;
+  });
 
   let teamTotal = 0, overallAllTime = 0, todayTotal = 0, currentMonthSalesForGoal = 0;
   let now = new Date();
@@ -714,10 +755,11 @@ async function renderAll() {
 
     let salesRowsHtml = memberSales.map(s => {
       let dObj = new Date(s.timestamp);
+      let modelBadge = s.model_name ? `<span class="model-tag">🎬 ${escapeHtml(s.model_name)}</span>` : '';
       return `
         <div class="saleRow">
           <div>
-            <div class="fan">👤 ${escapeHtml(s.fan_name)}</div>
+            <div class="fan">👤 ${escapeHtml(s.fan_name)} ${modelBadge}</div>
             <div class="date">${dObj.toISOString().split('T')[0]} <span class="time-tag">⏰ ${dObj.toTimeString().split(' ')[0].substring(0, 5)}</span></div>
           </div>
           <div class="saleRowRight">
@@ -755,7 +797,6 @@ async function renderAll() {
   document.getElementById('overall').innerText = '$' + overallAllTime.toFixed(2);
   document.getElementById('daily').innerText = '$' + todayTotal.toFixed(2);
   
-  // Metric visual configurations summary updates
   document.getElementById('monthlyGoalDisplay').innerText = '$' + dynamicMonthlyGoal.toFixed(2);
   let finalPercentage = dynamicMonthlyGoal > 0 ? ((currentMonthSalesForGoal / dynamicMonthlyGoal) * 100) : 0;
   document.getElementById('goalPercentDisplay').innerText = finalPercentage.toFixed(1) + '%';
@@ -810,6 +851,18 @@ async function submitAddMember() {
   }, `Instantiated profile trace for ${name}.`);
 }
 
+function openAddModelModal() {
+  if (!isAdmin) { openAuthModal(true); return; }
+  document.getElementById("newModelInputName").value = ""; openModal("addModelModal");
+}
+async function submitAddModel() {
+  let name = document.getElementById("newModelInputName").value.trim();
+  if(!name) return showNotification("Model label name mapping parameter missing.", "error");
+  await runWithGuard(async () => {
+    await db.addModel(name); closeModal("addModelModal"); await renderAll();
+  }, `Successfully registered "${name}" to valid model indices.`);
+}
+
 function executeDeleteMember(id) {
   if (!isAdmin) return;
   document.getElementById("deleteConfirmText").innerText = "Purge target resource profile index?";
@@ -832,6 +885,7 @@ async function openSaleModal(teamId, memberId, saleId = null) {
     document.getElementById("modalTitle").innerText = "✏️ Edit Sale Entry";
     let target = appData.sales.find(s => s.id === saleId);
     if (target) {
+      document.getElementById("saleModelSelect").value = target.model_name || "";
       document.getElementById("saleFan").value = target.fan_name;
       document.getElementById("saleAmount").value = target.amount;
       document.getElementById("saleDate").value = target.timestamp.split('T')[0];
@@ -839,6 +893,7 @@ async function openSaleModal(teamId, memberId, saleId = null) {
     }
   } else {
     document.getElementById("modalTitle").innerText = "💰 Record New Sale";
+    document.getElementById("saleModelSelect").value = "";
     document.getElementById("saleFan").value = ""; document.getElementById("saleAmount").value = "";
     let now = new Date();
     document.getElementById("saleDate").value = now.toISOString().split('T')[0];
@@ -849,17 +904,19 @@ async function openSaleModal(teamId, memberId, saleId = null) {
 function closeSaleModal() { closeModal("saleModal"); }
 
 async function submitSaleEntry() {
+  let modelName = document.getElementById("saleModelSelect").value;
   let fan = document.getElementById("saleFan").value.trim();
   let amt = parseFloat(document.getElementById("saleAmount").value);
   let dt = document.getElementById("saleDate").value;
   let tm = document.getElementById("saleTime").value;
 
+  if(!modelName) return showNotification("Please select a model from the dropdown lists.", "error");
   if(!fan || isNaN(amt) || amt <= 0 || !dt || !tm) return showNotification("Verify parameter fields completeness.", "error");
 
   let isoTimestamp = `${dt}T${tm}:00`;
   await runWithGuard(async () => {
     await db.upsertSale({
-      id: activeSaleContext.saleId, team_id: activeSaleContext.teamId, member_id: activeSaleContext.memberId, fan_name: fan, amount: amt, timestamp: isoTimestamp
+      id: activeSaleContext.saleId, team_id: activeSaleContext.teamId, member_id: activeSaleContext.memberId, model_name: modelName, fan_name: fan, amount: amt, timestamp: isoTimestamp
     });
     closeSaleModal(); await renderAll();
   }, "Synchronized dynamic transaction ledger event mapping.");
@@ -940,11 +997,11 @@ async function renderGlobalChart(){
 
 async function exportCSV(){
   let appData = await db._getRaw();
-  let csv = "Team,Member,Fan Name,Timestamp,Amount\n";
+  let csv = "Team,Member,Model Name,Fan Name,Timestamp,Amount\n";
   appData.sales.forEach(s => {
     let teamName = appData.teams.find(t => t.id === s.team_id)?.name || 'Unknown';
     let memName = appData.members.find(m => m.id === s.member_id)?.name || 'Unknown';
-    csv += `"${teamName.replace(/"/g, '""')}","${memName.replace(/"/g, '""')}","${s.fan_name.replace(/"/g, '""')}","${s.timestamp}",${s.amount}\n`;
+    csv += `"${teamName.replace(/"/g, '""')}","${memName.replace(/"/g, '""')}","${(s.model_name || '').replace(/"/g, '""')}","${s.fan_name.replace(/"/g, '""')}","${s.timestamp}",${s.amount}\n`;
   });
   let blob = new Blob([csv], {type: 'text/csv'}), a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = "system_sales_report.csv"; a.click();
