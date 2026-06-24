@@ -154,6 +154,11 @@ details[open] .arrow{ transform:rotate(90deg) }
 
 .goal-input-container { display: flex; gap: 6px; align-items: center; }
 .goal-badge { font-size: 11px; background: rgba(99, 102, 241, 0.15); color: #818cf8; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: auto;}
+
+/* NEW EXTENSION STYLES */
+.fan-filter-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 12px; }
+.fan-custom-range { display: none; gap: 8px; align-items: center; }
+.fan-custom-range input { height: 36px; padding: 6px 12px; width: 125px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -265,6 +270,43 @@ details[open] .arrow{ transform:rotate(90deg) }
         <button id="btnNextPage" class="btn-pager" onclick="changePage(1)">Next ▶</button>
       </div>
     </div>
+  </div>
+
+  <div class="table-container" style="margin-top: 10px;">
+    <div style="padding: 18px 20px 5px 20px;">
+      <div class="fan-filter-row">
+        <div>
+          <h3 style="font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">👑 Premium Fan Activity Insights</h3>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Calculates individual customer transaction tracking benchmarks across system runtimes.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="fan-custom-range" id="fanCustomRangeWrapper">
+            <input type="date" id="fanStart">
+            <span style="font-size: 11px; color: var(--text-muted);">to</span>
+            <input type="date" id="fanEnd">
+            <button class="small green" style="padding: 6px 10px;" onclick="renderAll()">Go</button>
+          </div>
+          <select id="fanFilterDropdown" onchange="handleFanFilterChange()" style="width: 140px; height: 36px; padding: 0 12px; font-size: 12px;">
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="thisweek" selected>This Week</option>
+            <option value="custom">Custom Range</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Fan / Client Handle</th>
+          <th>Activity Frequency</th>
+          <th>Last Transaction Timestamp</th>
+          <th>Aggregated Contribution</th>
+        </tr>
+      </thead>
+      <tbody id="fanTableBody"></tbody>
+    </table>
   </div>
 
   <div class="card">
@@ -403,9 +445,6 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <script>
-// ==========================================
-// 🛠️ SUPABASE CONFIGURATION LAYER
-// ==========================================
 const SUPABASE_URL = "https://bbydcdctqmqnszjmryke.supabase.co"; 
 const SUPABASE_ANON_KEY = "sb_publishable_HL65zJ25Dof7-zDitYoGkQ_EX7KLkoF";
 
@@ -545,7 +584,7 @@ async function runWithGuard(actionFn, successMsg = null) {
 
 function setGlobalDisabledStates(disabled) {
   isMutatingLock = disabled;
-  const selectors = '.btn, .small, .btn-icon, select, #rangeStartDate, #rangeStartTime, #rangeEndDate, #rangeEndTime, .btn-submit, .close, .btn-pager';
+  const selectors = '.btn, .small, .btn-icon, select, #rangeStartDate, #rangeStartTime, #rangeEndDate, #rangeEndTime, .btn-submit, .close, .btn-pager, #fanFilterDropdown, #fanStart, #fanEnd';
   document.querySelectorAll(selectors).forEach(b => {
     b.disabled = disabled;
     b.style.pointerEvents = disabled ? 'none' : 'auto';
@@ -559,6 +598,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   let pastStr = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
   document.getElementById('rangeStartDate').value = pastStr;
   document.getElementById('rangeEndDate').value = todayStr;
+
+  // Init Fan custom dates
+  document.getElementById('fanStart').value = pastStr;
+  document.getElementById('fanEnd').value = todayStr;
 
   await runWithGuard(async () => {
     currentTeamId = "all"; 
@@ -662,6 +705,13 @@ function handleFilterTypeChange() {
   document.getElementById("customRangePicker").style.display = (type === "range") ? "flex" : "none";
   currentPage = 1; renderAll();
 }
+
+function handleFanFilterChange() {
+  let type = document.getElementById("fanFilterDropdown").value;
+  document.getElementById("fanCustomRangeWrapper").style.display = (type === "custom") ? "flex" : "none";
+  renderAll();
+}
+
 function setMemberFilter(v){ selectedMemberName = v; currentPage = 1; renderAll(); }
 
 function matchTimeframeFilter(timestampStr) {
@@ -686,6 +736,37 @@ function matchTimeframeFilter(timestampStr) {
     
     let boundaryStart = new Date(`${startD}T${startT || '00:00'}`);
     let boundaryEnd = new Date(`${endD}T${endT || '23:59'}`);
+    return saleDate >= boundaryStart && saleDate <= boundaryEnd;
+  }
+  return true;
+}
+
+// NEW ACTION-SPECIFIC FAN FILTER ENGINE 
+function matchFanTimeframeFilter(timestampStr) {
+  let type = document.getElementById("fanFilterDropdown").value;
+  let saleDate = new Date(timestampStr);
+  let now = new Date();
+
+  if(type === "all") return true;
+  if(type === "today") return saleDate.toDateString() === now.toDateString();
+  if(type === "yesterday") {
+    let y = new Date(); y.setDate(now.getDate() - 1);
+    return saleDate.toDateString() === y.toDateString();
+  }
+  if(type === "thisweek") {
+    let currentDay = now.getDay();
+    let distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay; 
+    let startOfWeek = new Date(now.setDate(now.getDate() + distanceToMonday));
+    startOfWeek.setHours(0,0,0,0);
+    let resetNow = new Date();
+    return saleDate >= startOfWeek && saleDate <= resetNow;
+  }
+  if(type === "custom") {
+    let startD = document.getElementById('fanStart').value;
+    let endD = document.getElementById('fanEnd').value;
+    if(!startD || !endD) return true;
+    let boundaryStart = new Date(`${startD}T00:00:00`);
+    let boundaryEnd = new Date(`${endD}T23:59:59`);
     return saleDate >= boundaryStart && saleDate <= boundaryEnd;
   }
   return true;
@@ -730,6 +811,9 @@ async function renderAll() {
   let teamTotal = 0, overallAllTime = 0, todayTotal = 0, currentMonthSalesForGoal = 0;
   let now = new Date();
   let leaderboardMap = {};
+  
+  // Dynamic temporary data dictionary holding fan profiles
+  let calculatedFanData = {};
 
   appData.sales.forEach(s => {
     let sDate = new Date(s.timestamp);
@@ -737,6 +821,21 @@ async function renderAll() {
     if (sDate.toDateString() === now.toDateString()) todayTotal += parseFloat(s.amount);
     if (sDate.getMonth() === now.getMonth() && sDate.getFullYear() === now.getFullYear()) {
       currentMonthSalesForGoal += parseFloat(s.amount);
+    }
+
+    // Process unique metrics for fan tracking
+    if (matchFanTimeframeFilter(s.timestamp)) {
+      let cleanFanHandle = (s.fan_name || "").trim();
+      if(cleanFanHandle) {
+        if(!calculatedFanData[cleanFanHandle]) {
+          calculatedFanData[cleanFanHandle] = { spend: 0, frequency: 0, latestTimestamp: s.timestamp };
+        }
+        calculatedFanData[cleanFanHandle].spend += parseFloat(s.amount);
+        calculatedFanData[cleanFanHandle].frequency += 1;
+        if(new Date(s.timestamp) > new Date(calculatedFanData[cleanFanHandle].latestTimestamp)) {
+          calculatedFanData[cleanFanHandle].latestTimestamp = s.timestamp;
+        }
+      }
     }
   });
 
@@ -806,6 +905,24 @@ async function renderAll() {
   });
 
   document.getElementById('tableBody').innerHTML = tbodyHtml;
+  
+  // RENDERING FAN METRIC ROWS DIRECTLY
+  let fanBodyHtml = '';
+  let sortedFans = Object.entries(calculatedFanData).sort((a,b) => b[1].spend - a[1].spend);
+  
+  sortedFans.forEach(([fanName, fanDetails]) => {
+    let lastActive = new Date(fanDetails.latestTimestamp);
+    fanBodyHtml += `
+      <tr>
+        <td><span style="font-weight: 500; color:#fff;">👤 ${escapeHtml(fanName)}</span></td>
+        <td><span style="color: var(--text-muted); font-size:13px;">${fanDetails.frequency} Purchases</span></td>
+        <td><span style="font-size: 12px; color: var(--text-muted);">${lastActive.toISOString().split('T')[0]} at ${lastActive.toTimeString().split(' ')[0].substring(0,5)}</span></td>
+        <td><strong style="color: var(--secondary); font-weight: 600;">$${fanDetails.spend.toFixed(2)}</strong></td>
+      </tr>`;
+  });
+  
+  document.getElementById('fanTableBody').innerHTML = fanBodyHtml || '<tr><td colspan="4" style="color: var(--text-muted); padding: 20px; text-align: center;">No fan purchase touchpoints matched this timeframe scope.</td></tr>';
+
   document.getElementById('teamTotal').innerText = '$' + teamTotal.toFixed(2);
   document.getElementById('overall').innerText = '$' + overallAllTime.toFixed(2);
   document.getElementById('daily').innerText = '$' + todayTotal.toFixed(2);
@@ -951,7 +1068,6 @@ function closeGraphModal() { closeModal("graphModal"); if (chartInstance) { char
 function openModelGraphModal() { if (isMutatingLock) return; openModal("modelGraphModal"); renderModelChart(); }
 function closeModelGraphModal() { closeModal("modelGraphModal"); if (modelChartInstance) { modelChartInstance.destroy(); modelChartInstance = null; } }
 
-// REFACTORED: HIGH PERFORMANCE HORIZONTAL BAR CHART INTERACTION
 async function renderModelChart() {
   let appData = await db._getRaw();
   let modelDataPoints = {};
@@ -997,7 +1113,7 @@ async function renderModelChart() {
       }]
     },
     options: {
-      indexAxis: 'y', // Magic switch to turn standard vertical bars into a clean horizontal layout
+      indexAxis: 'y', 
       responsive: true,
       maintainAspectRatio: false,
       layout: { padding: { right: 75 } },
