@@ -75,7 +75,6 @@ header h1 { font-size: 22px; font-weight: 700; background: linear-gradient(135de
 
 .actions{display:flex; gap:10px; flex-wrap:wrap; width: 100%;}
 
-/* Balanced Grid Optimization */
 .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; width: 100%; }
 .card{background: var(--bg-card); padding: 22px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 4px 30px rgba(0,0,0,0.12);}
 .card h4 { font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 500; letter-spacing: 0.5px;}
@@ -391,15 +390,15 @@ details[open] .arrow{ transform:rotate(90deg) }
 </div>
 
 <div id="modelGraphModal" class="modal">
-  <div class="modal-content" style="max-width: 600px;">
+  <div class="modal-content" style="max-width: 650px;">
     <div class="modal-header">
       <div>
-        <h3 style="margin-bottom: 4px;">📊 Model Revenue Share</h3>
-        <p style="font-size: 13px; color: var(--text-muted);">Comparative financial share calculated by assigned model tags (Respects filters).</p>
+        <h3 style="margin-bottom: 4px;">📊 Model Revenue Performance</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Total income calculated by model tracking parameters (Respects active timeframe filters).</p>
       </div>
       <span class="close" onclick="closeModelGraphModal()">&times;</span>
     </div>
-    <div style="position: relative; width: 100%; height: 340px;"><canvas id="modelSalesChart"></canvas></div>
+    <div style="position: relative; width: 100%; height: 360px;"><canvas id="modelSalesChart"></canvas></div>
   </div>
 </div>
 
@@ -952,7 +951,7 @@ function closeGraphModal() { closeModal("graphModal"); if (chartInstance) { char
 function openModelGraphModal() { if (isMutatingLock) return; openModal("modelGraphModal"); renderModelChart(); }
 function closeModelGraphModal() { closeModal("modelGraphModal"); if (modelChartInstance) { modelChartInstance.destroy(); modelChartInstance = null; } }
 
-// UPGRADED MODEL METRIC DISTRIBUTION CHART (DOUGHNUT ARCHITECTURE)
+// REFACTORED: HIGH PERFORMANCE HORIZONTAL BAR CHART INTERACTION
 async function renderModelChart() {
   let appData = await db._getRaw();
   let modelDataPoints = {};
@@ -968,49 +967,49 @@ async function renderModelChart() {
 
   if(modelChartInstance) modelChartInstance.destroy();
 
-  // Vibrant color array generation for distinct model slices
-  const backgroundColors = [
-    'rgba(139, 92, 246, 0.6)',
-    'rgba(0, 235, 214, 0.6)',
-    'rgba(99, 102, 241, 0.6)',
-    'rgba(16, 185, 129, 0.6)',
-    'rgba(239, 68, 68, 0.6)',
-    'rgba(245, 158, 11, 0.6)'
-  ];
-  const borderColors = ['#8b5cf6', '#00ebd6', '#6366f1', '#10b981', '#ef4444', '#f59e0b'];
+  const inlineValueLabels = {
+    id: 'inlineValueLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, index) => {
+        const meta = chart.getDatasetMeta(index);
+        meta.data.forEach((bar, i) => {
+          const val = dataset.data[i]; if (val === undefined || val === null) return;
+          const displayLabel = '$' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          ctx.save(); ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 11px Poppins'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+          ctx.fillText(displayLabel, bar.x + 8, bar.y); ctx.restore();
+        });
+      });
+    }
+  };
 
   modelChartInstance = new Chart(document.getElementById('modelSalesChart'), {
-    type: 'doughnut',
+    type: 'bar',
     data: {
       labels: sortedModels,
       datasets: [{
-        label: 'Revenue Shares',
+        label: 'Revenue Generated ($)',
         data: chartValues,
-        backgroundColor: backgroundColors.slice(0, sortedModels.length),
-        borderColor: borderColors.slice(0, sortedModels.length),
-        borderWidth: 2
+        backgroundColor: 'rgba(139, 92, 246, 0.4)',
+        borderColor: '#8b5cf6',
+        borderWidth: 2,
+        borderRadius: 5
       }]
     },
     options: {
+      indexAxis: 'y', // Magic switch to turn standard vertical bars into a clean horizontal layout
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { right: 75 } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#94a3b8' } },
+        y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { family: 'Poppins', size: 12, weight: '500' } } }
+      },
       plugins: {
-        legend: {
-          position: 'right',
-          labels: { color: '#e2e8f0', font: { family: 'Poppins', size: 12 } }
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              let label = context.label || '';
-              if (label) label += ': ';
-              if (context.parsed !== null) label += '$' + context.parsed.toFixed(2);
-              return label;
-            }
-          }
-        }
+        legend: { display: false }
       }
-    }
+    },
+    plugins: [inlineValueLabels]
   });
 }
 
